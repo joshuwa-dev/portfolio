@@ -1,0 +1,12 @@
+services:
+  vcdn:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: vcdn:latest
+    container_name: vcdn
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.local
+    restart: unless-stopped

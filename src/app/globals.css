@@ -1,0 +1,189 @@
+@import "tailwindcss";
+
+:root {
+  --airvery-bg: #f4f8fb;
+  --airvery-surface: #ffffff;
+  --airvery-text: #0f172a;
+  --airvery-muted: #475569;
+  --airvery-accent: #0e7490;
+  --airvery-accent-soft: #ecfeff;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  color: var(--airvery-text);
+  background:
+    radial-gradient(900px 500px at -10% -10%, #f1f3f5 0%, transparent 60%),
+    radial-gradient(900px 500px at 110% 0%, #e9ecef 0%, transparent 60%),
+    var(--airvery-bg);
+}
+
+a {
+  color: inherit;
+}
+
+.av-discover-gradient {
+  background: linear-gradient(130deg, #0f172a, #0e7490, #1d4ed8, #0f766e);
+  background-size: 300% 300%;
+  animation: avGradientShift 8s ease-in-out infinite;
+}
+
+.av-discover-gradient-overlay {
+  background:
+    radial-gradient(
+      70% 70% at 15% 20%,
+      rgba(34, 211, 238, 0.35),
+      transparent 65%
+    ),
+    radial-gradient(
+      65% 65% at 85% 75%,
+      rgba(59, 130, 246, 0.3),
+      transparent 68%
+    );
+  mix-blend-mode: screen;
+  opacity: 0.78;
+  filter: saturate(1.2);
+  animation: avGlowDrift 6s ease-in-out infinite alternate;
+}
+
+.av-discover-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(36px);
+  opacity: 0.45;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.av-discover-blob-a {
+  height: 230px;
+  width: 230px;
+  top: -40px;
+  left: -30px;
+  background: radial-gradient(
+    circle,
+    rgba(45, 212, 191, 0.9) 0%,
+    rgba(6, 182, 212, 0) 72%
+  );
+  animation: avBlobMoveA 8s ease-in-out infinite;
+}
+
+.av-discover-blob-b {
+  height: 260px;
+  width: 260px;
+  bottom: -70px;
+  right: -20px;
+  background: radial-gradient(
+    circle,
+    rgba(125, 211, 252, 0.95) 0%,
+    rgba(56, 189, 248, 0) 74%
+  );
+  animation: avBlobMoveB 9s ease-in-out infinite;
+}
+
+.av-discover-blob-c {
+  height: 190px;
+  width: 190px;
+  top: 35%;
+  left: 48%;
+  background: radial-gradient(
+    circle,
+    rgba(251, 191, 36, 0.78) 0%,
+    rgba(245, 158, 11, 0) 70%
+  );
+  animation: avBlobMoveC 7s ease-in-out infinite;
+}
+
+@keyframes avGradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes avGlowDrift {
+  0% {
+    transform: translate3d(-2%, -1%, 0) scale(1);
+    opacity: 0.62;
+  }
+  100% {
+    transform: translate3d(2%, 1%, 0) scale(1.08);
+    opacity: 0.82;
+  }
+}
+
+@keyframes avBlobMoveA {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(40px, 18px, 0) scale(1.15);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes avBlobMoveB {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-36px, -24px, 0) scale(1.12);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes avBlobMoveC {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-24px, 28px, 0) scale(1.18);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.portfolio-reveal {
+  animation: portfolioReveal 0.7s ease-out both;
+}
+
+.portfolio-delay-1 {
+  animation-delay: 0.08s;
+}
+
+.portfolio-delay-2 {
+  animation-delay: 0.16s;
+}
+
+.portfolio-delay-3 {
+  animation-delay: 0.24s;
+}
+
+.portfolio-delay-4 {
+  animation-delay: 0.32s;
+}
+
+@keyframes portfolioReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
