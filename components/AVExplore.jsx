@@ -554,7 +554,7 @@ export default function AVExplore() {
               </div>
 
               {primaryKeywords.length > 0 ? (
-                <div className="mt-3">
+                <div className="mt-3 hidden md:block">
                   <div className="flex flex-wrap gap-2">
                     {primaryKeywords.map((keyword) => (
                       <span
@@ -568,11 +568,11 @@ export default function AVExplore() {
                 </div>
               ) : null}
 
-              <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="mt-4 grid grid-cols-12 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {places.map((place) => (
                   <article
                     key={place.id}
-                    className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+                    className="col-span-12 md:col-span-1 group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
                   >
                     <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100">
                       <button
@@ -675,7 +675,7 @@ export default function AVExplore() {
               </h3>
 
               {relatedKeywords.length > 0 ? (
-                <div className="mt-3">
+                <div className="mt-3 hidden md:block">
                   <div className="flex flex-wrap gap-2">
                     {relatedKeywords.map((keyword) => (
                       <span
@@ -689,11 +689,11 @@ export default function AVExplore() {
                 </div>
               ) : null}
 
-              <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="mt-4 grid grid-cols-12 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {visibleRelatedPlaces.map((place) => (
                   <article
                     key={`related-${place.id}`}
-                    className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+                    className="col-span-12 md:col-span-1 group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
                   >
                     <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100">
                       <button

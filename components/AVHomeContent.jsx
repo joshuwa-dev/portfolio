@@ -40,7 +40,7 @@ export default function AVHomeContent() {
                 <br />
                 Destinations.
               </div>
-              <p className="mt-3 max-w-2xl text-sm font-light text-cyan-50 sm:text-base">
+              <p className="hidden md:block mt-3 max-w-2xl text-sm font-light text-cyan-50 sm:text-base">
                 Enter a city and let your mood shape where you go next.
               </p>
 
