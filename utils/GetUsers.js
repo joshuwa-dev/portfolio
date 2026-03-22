@@ -39,7 +39,7 @@ export default function GetUsers() {
         e.target.reset();
       } else {
         const data = await res.json().catch(() => ({}));
-        setError(data?.error || "Something went wrong.");
+        setError(data?.message || data?.error || "Something went wrong.");
         setStatus("error"); // ── AFTER SUBMIT (error)
       }
     } catch {

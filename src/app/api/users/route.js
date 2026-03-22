@@ -3,6 +3,7 @@ import admin from "firebase-admin";
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import { defaultLimiter } from "../../../lib/inMemoryRateLimiter";
 
 function parseServiceAccountFromEnv(raw) {
   if (!raw) return null;
@@ -22,10 +23,14 @@ function parseServiceAccountFromEnv(raw) {
 if (!admin.apps.length) {
   try {
     // 1) Prefer FIREBASE_SERVICE_ACCOUNT env var (raw JSON or base64 encoded JSON)
-    const envSvcRaw = process.env.FIREBASE_SERVICE_ACCOUNT || process.env.FIREBASE_SERVICE_ACCOUNT_B64;
+    const envSvcRaw =
+      process.env.FIREBASE_SERVICE_ACCOUNT ||
+      process.env.FIREBASE_SERVICE_ACCOUNT_B64;
     const envSvc = parseServiceAccountFromEnv(envSvcRaw);
     if (envSvc) {
-      console.log("Initializing firebase-admin from FIREBASE_SERVICE_ACCOUNT env var");
+      console.log(
+        "Initializing firebase-admin from FIREBASE_SERVICE_ACCOUNT env var",
+      );
       admin.initializeApp({
         credential: admin.credential.cert(envSvc),
         projectId: envSvc.project_id || envSvc.projectId,
@@ -65,6 +70,20 @@ if (!admin.apps.length) {
 
 export async function POST(req) {
   try {
+    // Per-IP rate limiting (in-memory). Extract the client IP from headers.
+    const ipHeader =
+      req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip");
+    const clientIp = ipHeader ? ipHeader.split(",")[0].trim() : "unknown";
+    if (!defaultLimiter.tryConsume(clientIp)) {
+      return NextResponse.json(
+        {
+          message:
+            "Received Your Last Message. Please Try Again After Few Minutes",
+        },
+        { status: 429 },
+      );
+    }
+
     if (!admin.apps.length) {
       console.error(
         "firebase-admin not initialized; admin.apps.length=",
@@ -83,7 +102,9 @@ export async function POST(req) {
     if (!existingProjectId) {
       try {
         // Try env var first
-        const envSvcRaw = process.env.FIREBASE_SERVICE_ACCOUNT || process.env.FIREBASE_SERVICE_ACCOUNT_B64;
+        const envSvcRaw =
+          process.env.FIREBASE_SERVICE_ACCOUNT ||
+          process.env.FIREBASE_SERVICE_ACCOUNT_B64;
         const envSvc = parseServiceAccountFromEnv(envSvcRaw);
         if (envSvc) {
           await admin.app().delete();
@@ -133,28 +154,52 @@ export async function POST(req) {
 
     let docRef;
 
-    if (interest === "collaboration") {
-      docRef = await adminDb.collection("collab").add({
-        name,
-        email,
-        message,
-        timestamp: new Date(),
+    // Choose collection based on interest
+    const collectionName =
+      interest === "collaboration"
+        ? "collab"
+        : interest === "airvery"
+          ? "airvery"
+          : "not_specified";
+
+    const colRef = adminDb.collection(collectionName);
+
+    // Try to find an existing entry for this email to avoid duplicates.
+    const existingSnap = await colRef
+      .where("email", "==", email)
+      .limit(1)
+      .get();
+
+    const now = new Date();
+
+    if (!existingSnap.empty) {
+      // Update existing document: append message, set previous/last message and updatedAt
+      const existingDoc = existingSnap.docs[0];
+      const existingData = existingDoc.data() || {};
+      await existingDoc.ref.update({
+        previousMessage: existingData.lastMessage || null,
+        lastMessage: message,
+        updatedAt: now,
+        messages: admin.firestore.FieldValue.arrayUnion({
+          text: message,
+          timestamp: now,
+        }),
       });
-    } else if (interest === "airvery") {
-      docRef = await adminDb.collection("airvery").add({
-        name,
-        email,
-        message,
-        timestamp: new Date(),
-      });
+      docRef = { id: existingDoc.id };
     } else {
-      docRef = await adminDb.collection("not_specified").add({
+      // Create a new document with a messages array
+      const base = {
         name,
         email,
-        message,
-        interest: "unspecified",
-        timestamp: new Date(),
-      });
+        lastMessage: message,
+        messages: [{ text: message, timestamp: now }],
+        interest: interest || "unspecified",
+        createdAt: now,
+        updatedAt: now,
+        timestamp: now,
+      };
+      const newDoc = await colRef.add(base);
+      docRef = newDoc;
     }
 
     return NextResponse.json(
