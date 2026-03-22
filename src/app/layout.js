@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Joshua Oyebode",
   description: "Software & Security Engineer",
+  title: "Joshua Oyebode",
 };
 
 export default function RootLayout({ children }) {
