@@ -5,16 +5,19 @@ const certifications = [
     title: "CompTIA Security+",
     note: "CompTIA",
     img: "/badges/comptia.png",
+    href: "https://www.credly.com/badges/7aa44928-240d-4336-a62c-fb2714692edb/linked_in_profile",
   },
   {
     title: "Cisco CCNA",
     note: "Cisco",
     img: "/badges/ccna.png",
+    href: "https://www.cisco.com/c/en/us/training-events/training-certifications/certifications/associate/ccna.html",
   },
   {
     title: "Google Associate Cloud Engineer",
     note: "Google Cloud",
     img: "/badges/google-cloud.png",
+    href: "https://cloud.google.com/certification/cloud-engineer",
   },
 ];
 
@@ -312,14 +315,16 @@ const MAX_GROUPS = 4;
 
 export default function Portfolio() {
   const [openTooltip, setOpenTooltip] = useState(null);
+  const [openCerts, setOpenCerts] = useState(false);
 
   useEffect(() => {
     function handleScroll() {
       if (openTooltip) setOpenTooltip(null);
+      if (openCerts) setOpenCerts(false);
     }
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [openTooltip]);
+  }, [openTooltip, openCerts]);
   return (
     <PortfolioLayout>
       <div className="w-full">
@@ -329,7 +334,7 @@ export default function Portfolio() {
             <div className="pointer-events-none absolute -left-16 -bottom-8 h-36 w-36 bg-slate-100 rounded-full opacity-50 blur-2xl transform-gpu -rotate-6" />
             <div className="relative z-10">
               <div className="flex flex-row items-center gap-6 mt-3">
-                <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-slate-900 leading-tight">
+                <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 leading-tight">
                   About Me
                 </h1>
                 <div className="flex flex-row gap-4 items-center">
@@ -378,88 +383,144 @@ export default function Portfolio() {
                     </span>
                   </div>
 
-                  {certifications.map((cert, idx) => {
-                    const id = `cert-${idx}`;
-                    return (
-                      <div key={cert.title} className="relative">
-                        {cert.title === "CompTIA Security+" ? (
-                          <a
-                            href="https://www.credly.com/badges/7aa44928-240d-4336-a62c-fb2714692edb/linked_in_profile"
-                            target="badges"
-                            rel="noopener noreferrer"
-                            aria-label="CompTIA Security+ badge"
-                            onClick={(e) => {
-                              if (openTooltip === id) {
-                                window.open(
-                                  "https://www.credly.com/badges/7aa44928-240d-4336-a62c-fb2714692edb/linked_in_profile",
-                                  "badges",
-                                );
-                                return;
-                              }
-                              e.preventDefault();
-                              setOpenTooltip(id);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
+                  {/* Desktop: individual badge icons (md and up) */}
+                  <div className="hidden md:flex flex-row gap-4 items-center">
+                    {certifications.map((cert, idx) => {
+                      const id = `cert-${idx}`;
+                      return (
+                        <div key={cert.title} className="relative">
+                          {cert.href ? (
+                            <a
+                              href={cert.href}
+                              target="badges"
+                              rel="noopener noreferrer"
+                              aria-label={`${cert.title} badge`}
+                              onClick={(e) => {
+                                if (openTooltip === id) {
+                                  window.open(cert.href, "badges");
+                                  return;
+                                }
                                 e.preventDefault();
-                                setOpenTooltip(openTooltip === id ? null : id);
-                              }
-                            }}
-                          >
-                            <img
-                              src={cert.img}
-                              alt={cert.title + " badge"}
-                              className="h-12 w-12 rounded-full border border-slate-100 bg-white shadow-sm object-cover"
-                              width={48}
-                              height={48}
-                              onError={(e) => {
-                                e.currentTarget.onerror = null;
-                                e.currentTarget.src =
-                                  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><rect width="100%" height="100%" fill="%23ffffff"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="10" fill="%23707b7c">Badge</text></svg>';
+                                setOpenTooltip(id);
                               }}
-                            />
-                          </a>
-                        ) : (
-                          <div
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => setOpenTooltip(id)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                setOpenTooltip(openTooltip === id ? null : id);
-                              }
-                            }}
-                          >
-                            <img
-                              src={cert.img}
-                              alt={cert.title + " badge"}
-                              className="h-12 w-12 rounded-full border border-slate-100 bg-white shadow-sm object-cover"
-                              width={48}
-                              height={48}
-                              onError={(e) => {
-                                e.currentTarget.onerror = null;
-                                e.currentTarget.src =
-                                  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><rect width="100%" height="100%" fill="%23ffffff"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="10" fill="%23707b7c">Badge</text></svg>';
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  setOpenTooltip(
+                                    openTooltip === id ? null : id,
+                                  );
+                                }
                               }}
-                            />
-                          </div>
-                        )}
-                        <span
-                          className={`absolute left-1/2 bottom-full mb-2 -translate-x-1/2 z-20 whitespace-nowrap rounded-md bg-slate-800 text-white text-xs font-medium px-2 py-1 transform-gpu transition duration-150 ${
-                            openTooltip === id
-                              ? "opacity-100 scale-100 pointer-events-auto"
-                              : "opacity-0 group-hover:opacity-100 scale-95 group-hover:scale-100 pointer-events-none"
-                          }`}
-                        >
-                          {cert.title}
-                        </span>
+                            >
+                              <img
+                                src={cert.img}
+                                alt={cert.title + " badge"}
+                                className="h-12 w-12 rounded-full border border-slate-100 bg-white shadow-sm object-cover"
+                                width={48}
+                                height={48}
+                                onError={(e) => {
+                                  e.currentTarget.onerror = null;
+                                  e.currentTarget.src =
+                                    'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><rect width="100%" height="100%" fill="%23ffffff"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="10" fill="%23707b7c">Badge</text></svg>';
+                                }}
+                              />
+                            </a>
+                          ) : (
+                            <div
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => setOpenTooltip(id)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  setOpenTooltip(
+                                    openTooltip === id ? null : id,
+                                  );
+                                }
+                              }}
+                            >
+                              <img
+                                src={cert.img}
+                                alt={cert.title + " badge"}
+                                className="h-12 w-12 rounded-full border border-slate-100 bg-white shadow-sm object-cover"
+                                width={48}
+                                height={48}
+                                onError={(e) => {
+                                  e.currentTarget.onerror = null;
+                                  e.currentTarget.src =
+                                    'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><rect width="100%" height="100%" fill="%23ffffff"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="10" fill="%23707b7c">Badge</text></svg>';
+                                }}
+                              />
+                            </div>
+                          )}
+                          <span
+                            className={`absolute left-1/2 bottom-full mb-2 -translate-x-1/2 z-20 whitespace-nowrap rounded-md bg-slate-800 text-white text-xs font-medium px-2 py-1 transform-gpu transition duration-150 ${
+                              openTooltip === id
+                                ? "opacity-100 scale-100 pointer-events-auto"
+                                : "opacity-0 group-hover:opacity-100 scale-95 group-hover:scale-100 pointer-events-none"
+                            }`}
+                          >
+                            {cert.title}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Mobile (xs & sm): simple text to keep profile picture accommodated */}
+                  <div className="flex md:hidden items-center">
+                    <div className="relative">
+                      <button
+                        type="button"
+                        aria-haspopup="true"
+                        aria-expanded={openCerts}
+                        className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full border border-slate-100 bg-white text-slate-700"
+                        onClick={() => setOpenCerts((v) => !v)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setOpenCerts((v) => !v);
+                          }
+                        }}
+                      >
+                        Peep Certs
+                      </button>
+
+                      <div
+                        className={`absolute left-1/2 top-[3.5rem] z-20 w-56 -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-lg transition-opacity ${openCerts ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+                      >
+                        <div className="flex flex-col gap-2">
+                          {certifications.map((cert) => (
+                            <a
+                              key={cert.title}
+                              href={cert.href || "#"}
+                              target="badges"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-slate-50"
+                              onClick={() => setOpenCerts(false)}
+                            >
+                              <img
+                                src={cert.img}
+                                alt={cert.title}
+                                className="h-8 w-8 rounded-full border border-slate-100 bg-white object-cover"
+                              />
+                              <div>
+                                <div className="text-sm font-medium text-slate-700">
+                                  {cert.title}
+                                </div>
+                                <div className="text-xs text-slate-500">
+                                  {cert.note}
+                                </div>
+                              </div>
+                            </a>
+                          ))}
+                        </div>
                       </div>
-                    );
-                  })}
+                    </div>
+                  </div>
                 </div>
               </div>
-              <p className="mt-4 text-lg text-slate-600 max-w-prose">
+              <p className="mt-4 text-md sm:text-lg leading-snug sm:leading-relaxed text-slate-600 max-w-prose">
                 I design and build user-centered, cloud-backed products and own
                 their operation in production. I combine product thinking,
                 full‑stack engineering, and systems/ops experience to deliver

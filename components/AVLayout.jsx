@@ -280,7 +280,9 @@ function Navbar() {
 
     window.addEventListener("scroll", handleCloseOnScroll, { passive: true });
     window.addEventListener("wheel", handleCloseOnScroll, { passive: true });
-    window.addEventListener("touchstart", handleCloseOnScroll, { passive: true });
+    window.addEventListener("touchstart", handleCloseOnScroll, {
+      passive: true,
+    });
 
     return () => {
       window.removeEventListener("scroll", handleCloseOnScroll);
