@@ -817,15 +817,29 @@ function Footer() {
   return (
     <footer className="mt-10 border-t border-slate-200/80 bg-white/70 py-5 text-center text-sm text-slate-600">
       <p>
-        © {new Date().getFullYear()} ɅV. Mood-based Travel - designed by{" "}
-        <a
-          href="https://joshuwa.dev"
-          className="text-blue-600 font-bold underline hover:text-blue-700"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Joshuwa.dev
-        </a>
+        <span className="hidden md:inline">
+          © {new Date().getFullYear()} ɅV. Mood-based Travel - designed by{' '}
+          <a
+            href="https://joshuwa.dev"
+            className="text-blue-600 font-bold underline hover:text-blue-700"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Joshuwa.dev
+          </a>
+        </span>
+
+        <span className="inline md:hidden">
+          © {new Date().getFullYear()} ɅV. Designed by{' '}
+          <a
+            href="https://joshuwa.dev"
+            className="text-blue-600 font-bold underline hover:text-blue-700"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Joshuwa.dev
+          </a>
+        </span>
       </p>
     </footer>
   );
