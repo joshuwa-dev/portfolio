@@ -107,11 +107,15 @@ import PortfolioLayout from "../../components/PortfolioLayout";
 // TechStackGroups component for toggling show more/less
 function TechStackGroups() {
   const [showAll, setShowAll] = useState(false);
-  const [groupCount, setGroupCount] = useState(2); // default for SSR
+  const [groupCount, setGroupCount] = useState(1); // default for SSR (xs)
+  const [openGroup, setOpenGroup] = useState(null);
+  const [openTooltip, setOpenTooltip] = useState(null);
 
   useEffect(() => {
     function handleResize() {
-      if (window.innerWidth < 768) {
+      if (window.innerWidth < 640) {
+        setGroupCount(1);
+      } else if (window.innerWidth < 768) {
         setGroupCount(2);
       } else if (window.innerWidth < 1024) {
         setGroupCount(3);
@@ -124,13 +128,23 @@ function TechStackGroups() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // close any open 'Others' popover when the user scrolls
+  useEffect(() => {
+    function handleScroll() {
+      if (openGroup) setOpenGroup(null);
+      if (openTooltip) setOpenTooltip(null);
+    }
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [openGroup, openTooltip]);
+
   let groupsToShow = techStackGroups;
   if (!showAll) {
     groupsToShow = techStackGroups.slice(0, groupCount);
   }
   return (
     <>
-      <div className="mt-4 grid gap-2 sm:gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+      <div className="mt-4 grid gap-2 sm:gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {groupsToShow.map((group) => {
           const { visibleItems, remainingItems } = splitTechItems(group.items);
           return (
@@ -158,14 +172,31 @@ function TechStackGroups() {
                   </div>
                 ))}
                 {remainingItems.length > 0 && (
-                  <div className="group relative flex flex-col items-center justify-center rounded-xl bg-white px-1.5 py-1.5 sm:px-2 sm:py-2 text-center shadow-sm ring-1 ring-slate-200 cursor-pointer">
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() =>
+                      setOpenGroup(
+                        openGroup === group.title ? null : group.title,
+                      )
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ")
+                        setOpenGroup(
+                          openGroup === group.title ? null : group.title,
+                        );
+                    }}
+                    className="group relative flex flex-col items-center justify-center rounded-xl bg-white px-1.5 py-1.5 sm:px-2 sm:py-2 text-center shadow-sm ring-1 ring-slate-200 cursor-pointer"
+                  >
                     <span className="inline-flex h-6 w-6 sm:h-8 sm:w-8 items-center justify-center text-xs font-bold text-slate-500">
                       +{remainingItems.length}
                     </span>
                     <span className="mt-0.5 text-[10px] sm:text-[11px] font-semibold text-slate-700">
                       Others
                     </span>
-                    <div className="pointer-events-none absolute left-1/2 top-[5.5rem] z-20 w-56 -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-3 text-left opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                    <div
+                      className={`absolute left-1/2 top-[5.5rem] z-20 w-56 -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-lg transition-opacity ${openGroup === group.title ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none group-hover:opacity-100"}`}
+                    >
                       <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 mb-2">
                         More in {group.title}
                       </p>
@@ -280,9 +311,18 @@ const experiences = [
 const MAX_GROUPS = 4;
 
 export default function Portfolio() {
+  const [openTooltip, setOpenTooltip] = useState(null);
+
+  useEffect(() => {
+    function handleScroll() {
+      if (openTooltip) setOpenTooltip(null);
+    }
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [openTooltip]);
   return (
     <PortfolioLayout>
-      <div className="container mx-auto px-3">
+      <div className="w-full">
         <div className="grid grid-cols-1 gap-y-8">
           <section className="relative overflow-hidden portfolio-reveal portfolio-delay-1 rounded-3xl border border-neutral-200 bg-gradient-to-r from-slate-50/70 to-white p-6 md:p-8 mb-12 shadow-2xl backdrop-blur-lg">
             <div className="pointer-events-none absolute -right-12 -top-10 h-44 w-44 bg-slate-100 rounded-full opacity-60 blur-3xl transform-gpu rotate-12" />
@@ -293,18 +333,30 @@ export default function Portfolio() {
                   About Me
                 </h1>
                 <div className="flex flex-row gap-4 items-center">
-                  <div className="relative group">
+                  <div className="relative">
                     <a
                       href="https://www.linkedin.com/in/joshuwa-dev/"
                       target="badges"
                       rel="noopener noreferrer"
                       aria-label="LinkedIn profile"
                       onClick={(e) => {
+                        if (openTooltip === "profile") {
+                          window.open(
+                            "https://www.linkedin.com/in/joshuwa-dev/",
+                            "badges",
+                          );
+                          return;
+                        }
                         e.preventDefault();
-                        window.open(
-                          "https://www.linkedin.com/in/joshuwa-dev/",
-                          "badges",
-                        );
+                        setOpenTooltip("profile");
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setOpenTooltip(
+                            openTooltip === "profile" ? null : "profile",
+                          );
+                        }
                       }}
                     >
                       <img
@@ -315,59 +367,96 @@ export default function Portfolio() {
                         height={48}
                       />
                     </a>
-                    <span className="pointer-events-none absolute left-1/2 bottom-full mb-2 -translate-x-1/2 z-20 whitespace-nowrap rounded-md bg-slate-800 text-white text-xs font-medium px-2 py-1 opacity-0 group-hover:opacity-100 transform-gpu scale-95 group-hover:scale-100 transition duration-150">
+                    <span
+                      className={`absolute left-1/2 bottom-full mb-2 -translate-x-1/2 z-20 whitespace-nowrap rounded-md bg-slate-800 text-white text-xs font-medium px-2 py-1 transform-gpu transition duration-150 ${
+                        openTooltip === "profile"
+                          ? "opacity-100 scale-100 pointer-events-auto"
+                          : "opacity-0 group-hover:opacity-100 scale-95 group-hover:scale-100 pointer-events-none"
+                      }`}
+                    >
                       Profile
                     </span>
                   </div>
 
-                  {certifications.map((cert) => (
-                    <div key={cert.title} className="relative group">
-                      {cert.title === "CompTIA Security+" ? (
-                        <a
-                          href="https://www.credly.com/badges/7aa44928-240d-4336-a62c-fb2714692edb/linked_in_profile"
-                          target="badges"
-                          rel="noopener noreferrer"
-                          aria-label="CompTIA Security+ badge"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            window.open(
-                              "https://www.credly.com/badges/7aa44928-240d-4336-a62c-fb2714692edb/linked_in_profile",
-                              "badges",
-                            );
-                          }}
-                        >
-                          <img
-                            src={cert.img}
-                            alt={cert.title + " badge"}
-                            className="h-12 w-12 rounded-full border border-slate-100 bg-white shadow-sm object-cover"
-                            width={48}
-                            height={48}
-                            onError={(e) => {
-                              e.currentTarget.onerror = null;
-                              e.currentTarget.src =
-                                'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><rect width="100%" height="100%" fill="%23ffffff"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="10" fill="%23707b7c">Badge</text></svg>';
+                  {certifications.map((cert, idx) => {
+                    const id = `cert-${idx}`;
+                    return (
+                      <div key={cert.title} className="relative">
+                        {cert.title === "CompTIA Security+" ? (
+                          <a
+                            href="https://www.credly.com/badges/7aa44928-240d-4336-a62c-fb2714692edb/linked_in_profile"
+                            target="badges"
+                            rel="noopener noreferrer"
+                            aria-label="CompTIA Security+ badge"
+                            onClick={(e) => {
+                              if (openTooltip === id) {
+                                window.open(
+                                  "https://www.credly.com/badges/7aa44928-240d-4336-a62c-fb2714692edb/linked_in_profile",
+                                  "badges",
+                                );
+                                return;
+                              }
+                              e.preventDefault();
+                              setOpenTooltip(id);
                             }}
-                          />
-                        </a>
-                      ) : (
-                        <img
-                          src={cert.img}
-                          alt={cert.title + " badge"}
-                          className="h-12 w-12 rounded-full border border-slate-100 bg-white shadow-sm object-cover"
-                          width={48}
-                          height={48}
-                          onError={(e) => {
-                            e.currentTarget.onerror = null;
-                            e.currentTarget.src =
-                              'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><rect width="100%" height="100%" fill="%23ffffff"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="10" fill="%23707b7c">Badge</text></svg>';
-                          }}
-                        />
-                      )}
-                      <span className="pointer-events-none absolute left-1/2 bottom-full mb-2 -translate-x-1/2 z-20 whitespace-nowrap rounded-md bg-slate-800 text-white text-xs font-medium px-2 py-1 opacity-0 group-hover:opacity-100 transform-gpu scale-95 group-hover:scale-100 transition duration-150">
-                        {cert.title}
-                      </span>
-                    </div>
-                  ))}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                setOpenTooltip(openTooltip === id ? null : id);
+                              }
+                            }}
+                          >
+                            <img
+                              src={cert.img}
+                              alt={cert.title + " badge"}
+                              className="h-12 w-12 rounded-full border border-slate-100 bg-white shadow-sm object-cover"
+                              width={48}
+                              height={48}
+                              onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src =
+                                  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><rect width="100%" height="100%" fill="%23ffffff"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="10" fill="%23707b7c">Badge</text></svg>';
+                              }}
+                            />
+                          </a>
+                        ) : (
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => setOpenTooltip(id)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                setOpenTooltip(openTooltip === id ? null : id);
+                              }
+                            }}
+                          >
+                            <img
+                              src={cert.img}
+                              alt={cert.title + " badge"}
+                              className="h-12 w-12 rounded-full border border-slate-100 bg-white shadow-sm object-cover"
+                              width={48}
+                              height={48}
+                              onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src =
+                                  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><rect width="100%" height="100%" fill="%23ffffff"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="10" fill="%23707b7c">Badge</text></svg>';
+                              }}
+                            />
+                          </div>
+                        )}
+                        <span
+                          className={`absolute left-1/2 bottom-full mb-2 -translate-x-1/2 z-20 whitespace-nowrap rounded-md bg-slate-800 text-white text-xs font-medium px-2 py-1 transform-gpu transition duration-150 ${
+                            openTooltip === id
+                              ? "opacity-100 scale-100 pointer-events-auto"
+                              : "opacity-0 group-hover:opacity-100 scale-95 group-hover:scale-100 pointer-events-none"
+                          }`}
+                        >
+                          {cert.title}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
               <p className="mt-4 text-lg text-slate-600 max-w-prose">

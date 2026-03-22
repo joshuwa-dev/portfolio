@@ -14,7 +14,7 @@ export function Navbar() {
   ];
 
   return (
-    <nav className="fixed inset-x-0 top-0 z-[130] px-2 pt-3 sm:px-4 sm:pt-4 h-16 sm:h-20 flex items-center">
+    <nav className="fixed inset-x-0 top-0 z-[130] px-4 pt-4 h-20 flex items-center">
       <div className="mx-auto flex max-w-6xl w-full items-center justify-between rounded-2xl border border-white/50 bg-white/80 px-4 sm:px-6 lg:px-8 py-2 sm:py-3 shadow-lg backdrop-blur h-full gap-2 sm:gap-4">
         <div>
           <p className="text-xs sm:text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -48,7 +48,7 @@ export function Navbar() {
 
 export default function PortfolioLayout({ children }) {
   return (
-    <div className="min-h-screen bg-slate-50 antialiased text-slate-800">
+    <div className="min-h-screen bg-slate-50 antialiased text-slate-800 overflow-x-hidden">
       <Navbar />
 
       <main className="relative mx-auto max-w-6xl w-full px-4 pb-14 pt-28 md:px-6 lg:pt-32">
@@ -56,7 +56,7 @@ export default function PortfolioLayout({ children }) {
       </main>
 
       <footer className="w-full">
-        <div className="mx-auto max-w-6xl w-full px-4 sm:px-6 lg:px-8 pb-6 sm:pb-10">
+        <div className="mx-auto max-w-6xl w-full px-4 sm:px-6 lg:px-6 pb-6 sm:pb-10">
           <div className="rounded-2xl border border-slate-200/40 bg-white/80 px-4 sm:px-6 py-3 sm:py-4 shadow-lg backdrop-blur">
             <div className="flex items-center justify-between gap-2 sm:gap-4 max-sm:flex-col max-sm:items-start">
               <p className="text-xs sm:text-sm font-semibold text-slate-700">
