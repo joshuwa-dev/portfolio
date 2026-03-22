@@ -17,8 +17,8 @@ export const metadata = {
   title: "Joshua Oyebode",
   description: "Software & Security Engineer",
   icons: {
-    icon: "/ogo.jpeg",
-    shortcut: "/ogo.jpeg",
+    icon: "/favicon.svg",
+    shortcut: "/favicon.ico",
     apple: "/ogo.jpeg",
   },
 };
