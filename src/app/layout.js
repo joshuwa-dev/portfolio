@@ -14,8 +14,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  description: "Software & Security Engineer",
   title: "Joshua Oyebode",
+  description: "Software & Security Engineer",
+  icons: {
+    icon: "/ogo.jpeg",
+    shortcut: "/ogo.jpeg",
+    apple: "/ogo.jpeg",
+  },
 };
 
 export default function RootLayout({ children }) {
