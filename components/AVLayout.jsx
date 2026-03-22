@@ -271,6 +271,24 @@ function Navbar() {
     };
   }, [showOptionsMenu]);
 
+  useEffect(() => {
+    if (!showCountrySearch) return;
+
+    function handleCloseOnScroll() {
+      setShowCountrySearch(false);
+    }
+
+    window.addEventListener("scroll", handleCloseOnScroll, { passive: true });
+    window.addEventListener("wheel", handleCloseOnScroll, { passive: true });
+    window.addEventListener("touchstart", handleCloseOnScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", handleCloseOnScroll);
+      window.removeEventListener("wheel", handleCloseOnScroll);
+      window.removeEventListener("touchstart", handleCloseOnScroll);
+    };
+  }, [showCountrySearch]);
+
   function handleSavedPlacesClick() {
     setShowOptionsMenu(false);
     router.push("/av/saved-places");
@@ -458,7 +476,8 @@ function Navbar() {
   const displayedMood = String(selectedMood || "")
     .replace(/\bfeeling\b/gi, "")
     .replace(/\s{2,}/g, " ")
-    .trim();
+    .trim()
+    .replace(/^['"]+|['"]+$/g, "");
 
   const userInitial =
     String(userEmail || "U")
@@ -467,14 +486,14 @@ function Navbar() {
       .toUpperCase() || "U";
 
   return (
-    <nav className="fixed inset-x-0 top-0 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/65 text-slate-900 z-[130] border-b border-slate-200/80">
+    <nav className="fixed inset-x-0 top-0 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/65 text-slate-500 z-[130] border-b border-slate-200/80">
       <div className="container mx-auto px-3 flex items-center py-4 gap-4">
         {/* Left */}
         <div className="text-xl font-semibold tracking-tight">
           {pathname === "/av" ? (
-            <span className="cursor-default text-cyan-900 opacity-70">ɅV</span>
+            <span className="cursor-default text-slate-500">ɅV</span>
           ) : (
-            <a href="/av" className="text-cyan-900">
+            <a href="/av" className="text-slate-500 hover:text-slate-700">
               ɅV
             </a>
           )}
@@ -486,10 +505,15 @@ function Navbar() {
               <button
                 type="button"
                 onClick={() => setShowCountrySearch((current) => !current)}
-                className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-900 hover:bg-slate-50 flex items-center gap-2"
+                className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50 flex items-center gap-2 min-w-0"
               >
-                <LocationPinIcon className="h-5 w-5 text-slate-900" />
-                {selectedCity}, {selectedCountry}
+                <LocationPinIcon className="h-5 w-5 text-slate-500" />
+                <span className="truncate md:hidden max-w-[8ch]">
+                  {selectedCity}
+                </span>
+                <span className="hidden md:inline">
+                  {selectedCity}, {selectedCountry}
+                </span>
               </button>
 
               <button
@@ -498,13 +522,24 @@ function Navbar() {
                   setShowCountrySearch(false);
                   setRequestMoodEdit(true);
                 }}
-                className={`rounded-full border px-3 py-2 text-sm font-medium text-slate-900 flex items-center gap-2 ${moodButtonStyle}`}
+                className={`rounded-full border px-3 py-2 text-sm font-medium text-slate-500 flex items-center gap-2 ${moodButtonStyle}`}
               >
-                <MoodToneIcon
-                  tone={selectedMoodTone}
-                  className="h-5 w-5 text-slate-900"
-                />
-                Mood: {displayedMood || "Set mood"}
+                <span className="flex items-center gap-2 md:hidden min-w-0">
+                  <MoodToneIcon
+                    tone={selectedMoodTone}
+                    className="h-5 w-5 text-slate-500"
+                  />
+                  <span className="truncate max-w-[8ch] text-slate-500">
+                    {displayedMood || "Set mood"}
+                  </span>
+                </span>
+                <span className="hidden md:flex items-center gap-2">
+                  <MoodToneIcon
+                    tone={selectedMoodTone}
+                    className="h-5 w-5 text-slate-500"
+                  />
+                  <span>Mood: {displayedMood || "Set mood"}</span>
+                </span>
               </button>
             </div>
           ) : null}

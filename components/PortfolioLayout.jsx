@@ -48,7 +48,7 @@ export function Navbar() {
 
 export default function PortfolioLayout({ children }) {
   return (
-    <div className="min-h-screen bg-slate-50 antialiased text-slate-800 overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 antialiased text-slate-900 overflow-x-hidden">
       <Navbar />
 
       <main className="relative mx-auto max-w-6xl w-full px-4 pb-14 pt-28 md:px-6 lg:pt-32">
