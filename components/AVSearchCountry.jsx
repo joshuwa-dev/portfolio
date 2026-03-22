@@ -158,7 +158,7 @@ export default function AVSearchCountry({
           ) : errorMessage ? (
             <p className="text-red-200">Error: {errorMessage}</p>
           ) : (
-            <p>{countries.length} cities available worldwide</p>
+            <p>{countries.length} cities worldwide</p>
           )}
         </div>
       ) : null}
