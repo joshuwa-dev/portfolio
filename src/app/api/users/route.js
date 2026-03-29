@@ -3,7 +3,7 @@ import admin from "firebase-admin";
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
-import { defaultLimiter } from "../../../src/lib/inMemoryRateLimiter";
+import { defaultLimiter } from "../../../lib/inMemoryRateLimiter";
 
 function parseServiceAccountFromEnv(raw) {
   if (!raw) return null;
