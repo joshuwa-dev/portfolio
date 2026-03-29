@@ -1,5 +1,5 @@
 import PortfolioLayout from "../../../components/PortfolioLayout";
-import GetUsers from "../../../utils/GetUsers";
+import GetUsers from "../../../components/GetUsers";
 
 export default function Contact() {
   return (

@@ -3,7 +3,7 @@ import {
   PREDEFINED_STAGE2_MOODS,
   labelMapDisplay,
   toneMapDisplay,
-} from "../../../../lib/moodConstants";
+} from "../../../../src/lib/moodConstants";
 
 function buildFallbackStep(city, answers = []) {
   if (answers.length === 0) {

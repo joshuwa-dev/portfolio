@@ -8,8 +8,8 @@ import enLocale from "i18n-iso-countries/langs/en.json";
 import { CircleFlag } from "react-circle-flags";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth, db } from "../../../../lib/Firebase";
-import { logUserEvent } from "../../../../lib/userIdentity";
+import { auth, db } from "../../../../src/lib/Firebase";
+import { logUserEvent } from "../../../../src/lib/userIdentity";
 import AVLayout from "../../../../components/AVLayout";
 
 const PAGE_SIZE = 12;

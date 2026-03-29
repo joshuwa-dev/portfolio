@@ -1,7 +1,7 @@
 "use client";
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import { CityselectContext } from "../context/CityselectProvider";
-import { auth } from "../lib/Firebase";
+import { auth } from "../src/lib/Firebase";
 
 export default function AVSearchCountry({
   compact = false,

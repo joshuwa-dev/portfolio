@@ -1,4 +1,4 @@
-import { fetchCityWeather } from "../../../../lib/CityWeather";
+import { fetchCityWeather } from "../../../../src/lib/CityWeather";
 import { NextResponse } from "next/server";
 
 export async function GET(request) {

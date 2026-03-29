@@ -10,7 +10,7 @@ import {
   query,
   where,
 } from "firebase/firestore";
-import { auth, db } from "../lib/Firebase";
+import { auth, db } from "../src/lib/Firebase";
 
 function sortTopEntries(counterMap) {
   return Array.from(counterMap.entries())

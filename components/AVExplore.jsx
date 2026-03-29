@@ -3,8 +3,8 @@ import { useContext, useEffect, useState } from "react";
 import Image from "next/image";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { CityselectContext } from "../context/CityselectProvider";
-import { auth, db } from "../lib/Firebase";
-import { logUserEvent } from "../lib/userIdentity";
+import { auth, db } from "../src/lib/Firebase";
+import { logUserEvent } from "../src/lib/userIdentity";
 import AVMoodFlowModal from "./AVMoodFlowModal";
 
 function getPlaceSaveKey(place, city, country) {

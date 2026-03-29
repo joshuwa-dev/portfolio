@@ -1,7 +1,7 @@
 "use client";
 import { createContext, useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "../lib/Firebase";
+import { auth } from "../src/lib/Firebase";
 
 export const CityselectContext = createContext();
 

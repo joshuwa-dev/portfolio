@@ -15,8 +15,8 @@ import {
   signInWithPopup,
   signOut,
 } from "firebase/auth";
-import { auth } from "../lib/Firebase";
-import { logUserEvent, upsertCanonicalUserProfile } from "../lib/userIdentity";
+import { auth } from "../src/lib/Firebase";
+import { logUserEvent, upsertCanonicalUserProfile } from "../src/lib/userIdentity";
 import {
   CityselectContext,
   CityselectProvider,

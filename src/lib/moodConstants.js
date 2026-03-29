@@ -34,10 +34,6 @@ export const PREDEFINED_STAGE2_MOODS = new Set([
   "lonely",
 ]);
 
-/**
- * Display format: Place venue names and categories for UI rendering in stage 3
- * Used by: mood-flow API for stage 3 options display
- */
 export const labelMapDisplay = {
   anxious: [
     "Botanical gardens",
@@ -221,10 +217,6 @@ export const labelMapDisplay = {
   ],
 };
 
-/**
- * Search format: Keywords for place discovery queries in place-suggestions API
- * Used by: place-suggestions API for generating Foursquare search terms
- */
 export const labelMapSearch = {
   anxious: [
     "botanical garden",
@@ -399,7 +391,8 @@ export const labelMapSearch = {
   unsure: [
     "casual dining",
     "city highlights",
-    "local favorite",
+    "easy itineraries",
+    "local favorites",
     "mixed activities",
     "walkable area",
     "waterfront",
@@ -408,10 +401,6 @@ export const labelMapSearch = {
   ],
 };
 
-/**
- * Tone-based display format: Fallback venue names when stage 2 is AI-generated
- * Used by: mood-flow API for stage 3 display when stage 2 is not predefined
- */
 export const toneMapDisplay = {
   positive: [
     "Attractions",
@@ -445,10 +434,6 @@ export const toneMapDisplay = {
   ],
 };
 
-/**
- * Tone-based search format: Fallback keywords when stage 2 is AI-generated
- * Used by: place-suggestions API for keyword generation when stage 2 is not predefined
- */
 export const toneMapSearch = {
   positive: [
     "attractions",
@@ -482,20 +467,13 @@ export const toneMapSearch = {
   ],
 };
 
-/**
- * Get the appropriate mood keywords based on stage 2 selection type
- * @param {string} stage2Selection - The stage 2 mood selection (predefined or AI-generated)
- * @param {string} stage1Tone - The stage 1 tone (positive, neutral, negative)
- * @param {boolean} isSearchContext - True for place-suggestions (search keywords), false for mood-flow (display)
- * @returns {Array<string>} Keywords for the given mood or tone
- */
 export function getPrimaryFallbackKeywords(
   stage2Selection,
   stage1Tone,
   isSearchContext = false,
 ) {
-  const stage2Lower = String(stage2Selection || "")
-    .toLowerCase()
+  const stage2Lower = String(stage2Selection || "").
+    toLowerCase()
     .trim();
   const stage1Lower = String(stage1Tone || "")
     .toLowerCase()
@@ -504,7 +482,6 @@ export function getPrimaryFallbackKeywords(
   const labelMap = isSearchContext ? labelMapSearch : labelMapDisplay;
   const toneMap = isSearchContext ? toneMapSearch : toneMapDisplay;
 
-  // If stage 2 is a predefined mood label, use that; otherwise use stage 1 tone
   if (labelMap[stage2Lower]) {
     return labelMap[stage2Lower];
   }

@@ -3,7 +3,7 @@ import {
   labelMapSearch,
   toneMapSearch,
   getPrimaryFallbackKeywords as getSharedFallbackKeywords,
-} from "../../../../lib/moodConstants";
+} from "../../../../src/lib/moodConstants";
 
 function getRandomToneKeywords(stage1Tone, count = 8) {
   const toneMapKeys = {
