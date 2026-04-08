@@ -4,11 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "set-admin-email": "node scripts/set-admin-by-email.mjs",
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "aggregate:daily": "node scripts/aggregateDashboardSummary.mjs"
+    "aggregate:daily": "node scripts/aggregateDashboardSummary.mjs",
+    "set-admin": "node scripts/set-admin.mjs"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.1.0",
