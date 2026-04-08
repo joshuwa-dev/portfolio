@@ -11,7 +11,7 @@ const certifications = [
     title: "Cisco CCNA",
     note: "Cisco",
     img: "/badges/ccna.png",
-    href: "https://www.cisco.com/c/en/us/training-events/training-certifications/certifications/associate/ccna.html",
+    href: "https://www.credly.com/badges/932aa4e8-b703-4f0c-ab42-024045513ef4/public_url",
   },
   {
     title: "Google Associate Cloud Engineer",
