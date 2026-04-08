@@ -37,6 +37,10 @@ steps:
         NEXT_PUBLIC_FIREBASE_API_KEY=FB_API_KEY:latest
       # Add your other 10+ keys above in the same format!
 
+# ADD THIS PART AT THE VERY END
+options:
+  logging: CLOUD_LOGGING_ONLY
+
 substitutions:
   _LOCATION: europe-west1 # Update to your region
   _REPO_NAME: av-artifact-repo # Name of your Artifact Registry repo
