@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 export const metadata = {
   title: "AV - Mood Travel",
   description: "Mood-based travel recommendations",
