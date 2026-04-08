@@ -1,0 +1,47 @@
+steps:
+  # 1. Build the container image
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "build",
+        "-t",
+        "$_LOCATION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/$_IMAGE_NAME:$COMMIT_SHA",
+        ".",
+      ]
+
+  # 2. Push the image to Artifact Registry
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "push",
+        "$_LOCATION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/$_IMAGE_NAME:$COMMIT_SHA",
+      ]
+
+  # 3. Deploy to Cloud Run
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: gcloud
+    args:
+      - "run"
+      - "deploy"
+      - "$_SERVICE_NAME"
+      - "--image"
+      - "$_LOCATION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/$_IMAGE_NAME:$COMMIT_SHA"
+      - "--region"
+      - "$_LOCATION"
+      - "--set-secrets"
+      - >-
+        WEATHER_API_KEY=WEATHER_API_KEY:latest,
+        FOURSQUARE_API_KEY=FOURSQUARE_API_KEY:latest,
+        OPENAI_API_KEY=OPENAI_API_KEY:latest,
+        FIREBASE_SERVICE_ACCOUNT_B64=FIREBASE_SERVICE_ACCOUNT_B64:latest,
+        NEXT_PUBLIC_FIREBASE_API_KEY=FB_API_KEY:latest
+      # Add your other 10+ keys above in the same format!
+
+substitutions:
+  _LOCATION: europe-west1 # Update to your region
+  _REPO_NAME: av-artifact-repo # Name of your Artifact Registry repo
+  _IMAGE_NAME: av-image
+  _SERVICE_NAME: av-cloud-run
+
+images:
+  - "$_LOCATION-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/$_IMAGE_NAME:$COMMIT_SHA"
