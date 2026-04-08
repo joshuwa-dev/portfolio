@@ -2,22 +2,26 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     // User profile and per-user analytics events.
+    // - Users can read their own profile and events.
+    // - Dashboard / cross-user analytics reads require the `admin` custom claim.
     match /users/{userId} {
-      allow read: if request.auth != null;
+      // allow owner read OR allow admin users
+      allow read: if request.auth != null && (request.auth.uid == userId || request.auth.token.admin == true);
       allow create, update: if request.auth != null && request.auth.uid == userId;
       allow delete: if false;
-      
+
       // Users can create events only under their own uid.
       match /events/{eventId} {
-        allow read: if request.auth != null;
+        // allow owner read OR allow admin users
+        allow read: if request.auth != null && (request.auth.uid == userId || request.auth.token.admin == true);
         allow create: if request.auth != null && request.auth.uid == userId;
         allow update, delete: if false;
       }
     }
-    
-    // Supports collection-group event reads used by dashboard analytics.
+
+    // Prevent unauthenticated or non-admin collection-group reads.
     match /{path=**}/events/{eventId} {
-      allow read: if request.auth != null;
+      allow read: if request.auth != null && request.auth.token.admin == true;
       allow write: if false;
     }
 
