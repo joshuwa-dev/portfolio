@@ -288,7 +288,7 @@ function splitTechItems(items) {
 
 const experiences = [
   {
-    role: "Freelance Software Engineer",
+    role: "DevSecOps Engineer",
     org: "Independent / ɅV",
     period: "2024 - Present",
     impact:
@@ -302,7 +302,7 @@ const experiences = [
       "Triaged and remediated 500+ vulnerabilities, improved secure coding practices across teams, and reduced incident response time through stronger monitoring workflows.",
   },
   {
-    role: "Network Engineer",
+    role: "Infrastructure Engineer",
     org: "Ngcom Networks",
     period: "2019 - 2022",
     impact:
@@ -521,12 +521,13 @@ export default function Portfolio() {
                 </div>
               </div>
               <p className="mt-4 text-md sm:text-lg leading-snug sm:leading-relaxed text-slate-600 max-w-prose">
-                I design and build user-centered, cloud-backed products and own
-                their operation in production. I combine product thinking,
-                full‑stack engineering, and systems/ops experience to deliver
-                reliable, secure, scalable solutions. Seeking a Cloud Engineer
-                role to design, deploy, and support scalable cloud
-                infrastructure.
+                DevSecOps Engineer & Cybersecurity Professional with over 5
+                years of experience building resilient, security-first
+                infrastructure across Cloud (GCP/AWS) and Enterprise Network
+                environments. Google Certified Associate Cloud Engineer expert
+                in automating Secure SDLC pipelines, implementing
+                Infrastructure-as-Code (Terraform), and architecting Zero-Trust
+                identity layers.
               </p>
             </div>
           </section>

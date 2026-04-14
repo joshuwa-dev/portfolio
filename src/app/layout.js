@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata = {
   title: "Joshua Oyebode",
-  description: "Software & Security Engineer",
+  description: "DevSecOps Engineer | Cybersecurity",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.ico",

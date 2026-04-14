@@ -21,7 +21,7 @@ export function Navbar() {
             Joshua Oyebode
           </p>
           <p className="text-sm sm:text-base font-bold text-slate-900">
-            Software & Security Engineer
+            DevSecOps Engineer | Cybersecurity
           </p>
         </div>
 
