@@ -1,9 +1,22 @@
-# Airvery
+# Airvery — Mood-first Travel Discovery
 
-Airvery is a mood-first travel discovery experience built with Next.js.
-Users select a city, complete a short mood flow, and receive place suggestions aligned with their vibe.
+Airvery is a mood-first travel discovery web app built with Next.js that helps users find places and experiences tailored to their current mood and the selected city.
 
-## Run Locally
+Key features
+
+- Mood-driven place suggestions (AI-assisted with a deterministic fallback)
+- City weather lookup
+- Curated and Foursquare-powered place suggestions
+- Docker-ready for local and production deployments
+
+Tech stack
+
+- Next.js (app router)
+- Node.js serverless functions (under `functions/`)
+- Firebase (optional integrations)
+- Tailwind CSS
+
+Quickstart (local development)
 
 1. Install dependencies:
 
@@ -11,7 +24,7 @@ Users select a city, complete a short mood flow, and receive place suggestions a
 npm install
 ```
 
-2. Create `.env.local` in the project root:
+2. Copy environment template and set required keys (create `.env.local` in the project root):
 
 ```env
 OPENAI_API_KEY=your_openai_key
@@ -20,94 +33,67 @@ WEATHER_API_KEY=your_weatherapi_key
 FOURSQUARE_API_KEY=your_foursquare_key_optional
 ```
 
-3. Start development server:
+3. Run the development server:
 
 ```bash
 npm run dev
 ```
 
-4. Open http://localhost:3000/av
+4. Open http://localhost:3000/av to try the mood-driven experience.
 
-## API Routes
+Project layout (high level)
 
-- `POST /api/mood-flow`
-  - Input: `city`, `answers`
-  - Output: next mood question/options or final summary
-  - Uses OpenAI when configured, with deterministic fallback
+- `src/app/` — Next.js routes and pages (including `av` section)
+- `components/` — UI components used by pages
+- `lib/` — helper modules (CityWeather, Firebase, rate limiter, etc.)
+- `functions/` — Cloud Functions code (server-side endpoints)
+- `public/` — static assets and badges
 
-- `GET /api/cityweather?city=...`
-  - Returns current weather for selected city
-  - Requires `WEATHER_API_KEY`
+API endpoints
 
-- `POST /api/place-suggestions`
-  - Input: `city`, `country`, `mood`, `moodTone`
-  - Output: mood keywords + suggested places
-  - Uses Foursquare Places when `FOURSQUARE_API_KEY` is present
-  - Falls back to curated keyword-based local suggestions if key is missing
+- `POST /api/mood-flow` — advances the mood flow; input `city` + `answers`.
+- `GET /api/cityweather?city=...` — returns current weather for a city (requires `WEATHER_API_KEY`).
+- `POST /api/place-suggestions` — accepts `city`, `country`, `mood`, `moodTone` and returns place suggestions (uses Foursquare when configured; falls back to curated suggestions).
 
-## Notes
+Docker
 
-- If weather fails, check `WEATHER_API_KEY` and API quota.
-- If place suggestions return `source: "fallback"`, set `FOURSQUARE_API_KEY` for live place data.
-
-## Containerize And Deploy
-
-### Build And Run With Docker
-
-1. Build image:
+Build image:
 
 ```bash
-docker build -t vcdn:latest .
+docker build -t airvery:latest .
 ```
 
-2. Run container with env file:
+Run with `.env.local`:
 
 ```bash
-docker run --rm -p 3000:3000 --env-file .env.local vcdn:latest
+docker run --rm -p 3000:3000 --env-file .env.local airvery:latest
 ```
 
-3. Open http://localhost:3000/av
-
-### Run With Docker Compose
+Or with Docker Compose:
 
 ```bash
 docker compose up --build -d
 ```
 
-To stop:
+Deployment notes
 
-```bash
-docker compose down
-```
+- Ensure production environment contains required API keys and secrets.
+- Configure your hosting (Vercel, Docker host, or a VM) to run the Next.js app and any serverless functions.
 
-### Push To GitHub And Pull On Web Server
+Contributing
 
-1. Commit and push your app repo:
+1. Fork the repo and create a feature branch.
+2. Open a PR describing your change.
 
-```bash
-git add .
-git commit -m "Add Docker containerization"
-git push origin main
-```
+Helpful commands
 
-2. On your web server:
+- `npm run dev` — start Next.js dev server
+- `npm run build` — build for production
+- `npm start` — run production build
 
-```bash
-git clone <your-repo-url>
-cd <repo-name>
-```
+License
 
-3. Create server env file (recommended: `.env.local`) with your production keys.
+This repository does not include a license file. Add a `LICENSE` if you want to specify terms.
 
-4. Start app on server:
-
-```bash
-docker compose up --build -d
-```
-
-5. Update after new pushes:
-
-```bash
-git pull
-docker compose up --build -d
-```
+—
+If you want, I can also add a short `CONTRIBUTING.md`, badges, or a demo GIF. Tell me which you prefer.
