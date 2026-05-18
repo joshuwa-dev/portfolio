@@ -36,7 +36,8 @@ export class InMemoryRateLimiter {
 }
 
 // Export a default shared limiter instance suitable for local/dev use.
+// Default limiter: allow 3 events per 60s (burst = 3)
 export const defaultLimiter = new InMemoryRateLimiter({
-  tokensPerInterval: 1,
-  intervalMs: 120_000,
+  tokensPerInterval: 3,
+  intervalMs: 60_000,
 });

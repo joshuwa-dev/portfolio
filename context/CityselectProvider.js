@@ -1,7 +1,8 @@
 "use client";
-import { createContext, useEffect, useState } from "react";
+import { createContext, useEffect, useState, useRef } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../src/lib/Firebase";
+import { sendAuthEvent } from "../src/lib/authAnalytics";
 
 export const CityselectContext = createContext();
 
@@ -22,6 +23,7 @@ export function CityselectProvider({ children }) {
   const [loginPromptTick, setLoginPromptTick] = useState(0);
   const [hasHydrated, setHasHydrated] = useState(false);
   const [storageKey, setStorageKey] = useState(ANON_STORAGE_KEY);
+  const lastUidRef = useRef(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -33,6 +35,25 @@ export function CityselectProvider({ children }) {
         }
         return currentKey;
       });
+
+      // emit minimal auth events for analytics (best-effort)
+      try {
+        if (user && lastUidRef.current !== user.uid) {
+          lastUidRef.current = user.uid;
+          void sendAuthEvent({
+            eventType: "auth.login.success",
+            userId: user.uid,
+            email: user.email || null,
+            platform: "web",
+          });
+        } else if (!user && lastUidRef.current) {
+          const prev = lastUidRef.current;
+          lastUidRef.current = null;
+          void sendAuthEvent({ eventType: "auth.logout", userId: prev });
+        }
+      } catch (err) {
+        // best-effort
+      }
     });
 
     return unsubscribe;

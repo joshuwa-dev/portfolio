@@ -1,0 +1,107 @@
+Good — step-by-step checklist you can follow now, minimal and actionable.
+
+**1) Create service folder**
+
+- Create contact-service at repo root.
+
+**2) Initialize project**
+
+- Inside the folder:
+
+```bash
+cd services/contact-service
+npm init -y
+npm install express firebase-admin dotenv
+```
+
+**3) Add server entry**
+
+- Create services/contact-service/src/index.js and implement:
+  - `GET /health`
+  - `POST /v1/contact` (validate payload, dedupe/update or insert into Firestore using `firebase-admin`)
+  - Use `FIREBASE_SERVICE_ACCOUNT_B64` or ADC to initialize admin
+  - Return 201/400/429/500 consistent with current Next API
+
+(You can copy the logic from `src/app/api/contact/route.js` and adapt it for Express.)
+
+**4) Add rate limiter**
+
+- Add services/contact-service/src/limiter.js by porting inMemoryRateLimiter.js for local/dev use.
+
+**5) Add config and env**
+
+- Add `.env.example` listing `PORT`, `FIREBASE_SERVICE_ACCOUNT_B64`, `PUBSUB_TOPIC` (optional).
+- Use `dotenv` to load envs in `src/index.js`.
+
+**6) Add Dockerfile**
+
+- Add services/contact-service/Dockerfile (small Node image, expose 8080).
+
+**7) Local tooling: Firestore emulator**
+
+- For local E2E, run Firestore emulator:
+
+```bash
+# from repo root or services folder
+firebase emulators:start --only firestore,auth
+```
+
+- Run service locally:
+
+```bash
+PORT=8081 npm start
+```
+
+**8) Test the endpoint**
+
+```bash
+curl -X POST http://localhost:8081/v1/contact \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Test","email":"t@example.com","message":"hi","interest":"collaboration"}'
+```
+
+**9) Add async event publishing (next)**
+
+- After successful write, publish a Pub/Sub message (`contact-events`) so `notification-service` can handle emails later.
+
+**10) Containerize & CI**
+
+- Build image locally:
+
+```bash
+docker build -t contact-service:local .
+docker run -p 8081:8080 -e FIREBASE_SERVICE_ACCOUNT_B64="..." contact-service:local
+```
+
+- Add cloudbuild.yaml or GitHub Actions later to:
+  - run tests
+  - build image → push to Artifact Registry
+  - deploy to Cloud Run
+
+**11) Deploy to Cloud Run (example)**
+
+- Create service account and grant minimal roles (Firestore, Pub/Sub publisher, Secret Manager access).
+- Deploy:
+
+```bash
+gcloud run deploy contact-service \
+  --image=LOCATION-docker.pkg.dev/PROJECT/REPO/contact-service:TAG \
+  --region=europe-west1 \
+  --service-account=contact-sa@PROJECT.iam.gserviceaccount.com \
+  --allow-unauthenticated=false
+```
+
+**12) Cutover strategy**
+
+- Option A (safe): Keep existing Next API route as a proxy that forwards to the new service while you validate.
+- Option B (direct): Change frontend fetch to call the new Cloud Run URL after smoke tests.
+- After stable, remove proxy and disable Firestore-trigger emails (move to Pub/Sub + `notification-service`).
+
+Notes & quick recommendations
+
+- Do NOT include any UI pages in the service — it’s API-only.
+- Use Secret Manager for production secrets; do not commit service account JSON.
+- Replace in-memory limiter with Redis / API Gateway quotas at scale.
+- Add `/metrics` and structured logs for observability.
+
+If you want, I can scaffold the files now (create package.json, `src/index.js`, `src/limiter.js`, Dockerfile, `.env.example`, README.md) — should I create them?

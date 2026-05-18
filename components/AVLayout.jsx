@@ -17,6 +17,7 @@ import {
 } from "firebase/auth";
 import { auth } from "../src/lib/Firebase";
 import { logUserEvent, upsertCanonicalUserProfile } from "../src/lib/userIdentity";
+import { sendAuthEvent } from "../src/lib/authAnalytics";
 import {
   CityselectContext,
   CityselectProvider,
@@ -173,6 +174,22 @@ function Navbar() {
               await logUserEvent({
                 uid: user.uid,
                 eventName: "login_success",
+                metadata: {
+                  providers: (user.providerData || [])
+                    .map((entry) => entry?.providerId)
+                    .filter(Boolean),
+                },
+              });
+
+              // best-effort client-side analytics emission
+              void sendAuthEvent({
+                eventType: "auth.login.success",
+                userId: user.uid,
+                email: user.email || null,
+                provider: (user.providerData || [])
+                  .map((entry) => entry?.providerId)
+                  .filter(Boolean),
+                platform: "web",
                 metadata: {
                   providers: (user.providerData || [])
                     .map((entry) => entry?.providerId)
@@ -359,6 +376,12 @@ function Navbar() {
     } catch (error) {
       postLoginRequestedRef.current = false;
       setLoginError(error?.message || "Unable to send sign-in link right now.");
+      void sendAuthEvent({
+        eventType: "auth.login.failed",
+        provider: "email_link",
+        email: loginForm.email || null,
+        metadata: { message: error?.message || null, code: error?.code || null },
+      });
     } finally {
       setAuthLoading(false);
     }
@@ -405,6 +428,12 @@ function Navbar() {
         setLoginError(
           error?.message || "Unable to complete email link sign-in.",
         );
+        void sendAuthEvent({
+          eventType: "auth.login.failed",
+          provider: "email_link",
+          email: storedEmail || null,
+          metadata: { message: error?.message || null, code: error?.code || null },
+        });
       } finally {
         setAuthLoading(false);
       }
@@ -439,6 +468,11 @@ function Navbar() {
       setShowLoginModal(true);
       setLoginMethod("options");
       setLoginError(formatAuthError(error));
+      void sendAuthEvent({
+        eventType: "auth.login.failed",
+        provider: "google",
+        metadata: { message: error?.message || null, code: error?.code || null },
+      });
     } finally {
       setAuthTransitionNotice("");
       setAuthLoading(false);
@@ -463,6 +497,13 @@ function Navbar() {
     }
 
     await signOut(auth);
+    try {
+      // best-effort emit logout event (use previously-known uid if available)
+      const emittedUid = auth.currentUser?.uid || null;
+      void sendAuthEvent({ eventType: "auth.logout", userId: emittedUid });
+    } catch (err) {
+      // ignore
+    }
   }
 
   const moodToneStyles = {
