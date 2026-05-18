@@ -67,6 +67,17 @@ export async function POST(request) {
     // can be exported via a Log Sink to Pub/Sub or BigQuery.
     console.log(JSON.stringify({ log_type: "auth_event", ...event }));
 
+    // Debug mode: when called with ?debug=1, return the normalized event
+    // in the HTTP response to help verify the deployed service processed it.
+    try {
+      const url = new URL(request.url);
+      if (url.searchParams.get("debug") === "1") {
+        return NextResponse.json({ ok: true, event });
+      }
+    } catch (e) {
+      // ignore URL parsing errors and fall back to normal response
+    }
+
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("Failed to publish auth event:", err);

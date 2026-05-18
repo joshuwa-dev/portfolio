@@ -16,7 +16,10 @@ import {
   signOut,
 } from "firebase/auth";
 import { auth } from "../src/lib/Firebase";
-import { logUserEvent, upsertCanonicalUserProfile } from "../src/lib/userIdentity";
+import {
+  logUserEvent,
+  upsertCanonicalUserProfile,
+} from "../src/lib/userIdentity";
 import { sendAuthEvent } from "../src/lib/authAnalytics";
 import {
   CityselectContext,
@@ -380,7 +383,10 @@ function Navbar() {
         eventType: "auth.login.failed",
         provider: "email_link",
         email: loginForm.email || null,
-        metadata: { message: error?.message || null, code: error?.code || null },
+        metadata: {
+          message: error?.message || null,
+          code: error?.code || null,
+        },
       });
     } finally {
       setAuthLoading(false);
@@ -432,7 +438,10 @@ function Navbar() {
           eventType: "auth.login.failed",
           provider: "email_link",
           email: storedEmail || null,
-          metadata: { message: error?.message || null, code: error?.code || null },
+          metadata: {
+            message: error?.message || null,
+            code: error?.code || null,
+          },
         });
       } finally {
         setAuthLoading(false);
@@ -471,7 +480,10 @@ function Navbar() {
       void sendAuthEvent({
         eventType: "auth.login.failed",
         provider: "google",
-        metadata: { message: error?.message || null, code: error?.code || null },
+        metadata: {
+          message: error?.message || null,
+          code: error?.code || null,
+        },
       });
     } finally {
       setAuthTransitionNotice("");
@@ -859,7 +871,7 @@ function Footer() {
     <footer className="mt-10 border-t border-slate-200/80 bg-white/70 py-5 text-center text-sm text-slate-600">
       <p>
         <span className="hidden md:inline">
-          © {new Date().getFullYear()} ɅV. Mood-based Travel - designed by{' '}
+          © {new Date().getFullYear()} ɅV. Mood-based Travel - designed by{" "}
           <a
             href="https://joshuwa.dev"
             className="text-blue-600 font-bold underline hover:text-blue-700"
@@ -871,7 +883,7 @@ function Footer() {
         </span>
 
         <span className="inline md:hidden">
-          © {new Date().getFullYear()} ɅV. Designed by{' '}
+          © {new Date().getFullYear()} ɅV. Designed by{" "}
           <a
             href="https://joshuwa.dev"
             className="text-blue-600 font-bold underline hover:text-blue-700"
