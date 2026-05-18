@@ -1,5 +1,30 @@
 import { NextResponse } from "next/server";
 import { defaultLimiter } from "../../../lib/inMemoryRateLimiter";
+import { Logging } from "@google-cloud/logging";
+
+// Initialize Cloud Logging client. Uses ADC in Cloud Run or
+// GOOGLE_APPLICATION_CREDENTIALS locally when available.
+const logging = new Logging({
+  projectId:
+    process.env.GCP_PROJECT ||
+    process.env.GOOGLE_CLOUD_PROJECT ||
+    "av-web-app-492623",
+});
+const authLog = logging.log("auth_event");
+
+async function writeStructuredAuthLog(payload) {
+  try {
+    const entry = authLog.entry({ resource: { type: "global" } }, payload);
+    await authLog.write(entry);
+  } catch (err) {
+    // Best-effort fallback to stdout so logs are still visible locally.
+    console.warn(
+      "Cloud Logging write failed, falling back to stdout:",
+      err?.message || err,
+    );
+    console.log(JSON.stringify(payload));
+  }
+}
 
 // Canonical event types supported by the ingestion pipeline.
 const ALLOWED_EVENT_TYPES = new Set([
@@ -62,21 +87,9 @@ export async function POST(request) {
       metadata: body.metadata || null,
     };
 
-    // Write structured JSON to stdout so Cloud Logging can ingest it.
-    // Cloud Logging will parse valid JSON lines into `jsonPayload` which
-    // can be exported via a Log Sink to Pub/Sub or BigQuery.
-    console.log(JSON.stringify({ log_type: "auth_event", ...event }));
-
-    // Debug mode: when called with ?debug=1, return the normalized event
-    // in the HTTP response to help verify the deployed service processed it.
-    try {
-      const url = new URL(request.url);
-      if (url.searchParams.get("debug") === "1") {
-        return NextResponse.json({ ok: true, event });
-      }
-    } catch (e) {
-      // ignore URL parsing errors and fall back to normal response
-    }
+    // Write structured log to Cloud Logging (preferred). Falls back to
+    // stdout when the client fails so local dev still prints logs.
+    await writeStructuredAuthLog({ log_type: "auth_event", ...event });
 
     return NextResponse.json({ ok: true });
   } catch (err) {
