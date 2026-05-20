@@ -1,4 +1,26 @@
 steps:
+  # 0. (Optional) Fetch GeoIP DB files from GCS into the build workspace so Docker can COPY them
+  - name: "gcr.io/cloud-builders/gsutil"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        set -e
+        mkdir -p data
+        if [ -n "$_GEOIP_CITY_GCS" ]; then
+          echo "Copying GeoIP City DB from $_GEOIP_CITY_GCS"
+          gsutil cp "$_GEOIP_CITY_GCS" data/GeoLite2-City.mmdb || true
+        else
+          echo "_GEOIP_CITY_GCS not set; skipping City DB copy"
+        fi
+        if [ -n "$_GEOIP_ASN_GCS" ]; then
+          echo "Copying GeoIP ASN DB from $_GEOIP_ASN_GCS"
+          gsutil cp "$_GEOIP_ASN_GCS" data/GeoLite2-ASN.mmdb || true
+        else
+          echo "_GEOIP_ASN_GCS not set; skipping ASN DB copy"
+        fi
+        ls -l data || true
+
   # 1. Build the container image with Build Args pulled from Secret Manager
   - name: "gcr.io/cloud-builders/docker"
     entrypoint: "bash"
@@ -57,6 +79,8 @@ substitutions:
   _REPO_NAME: av-artifact-repo
   _IMAGE_NAME: av-image
   _SERVICE_NAME: av-cloud-run
+  _GEOIP_CITY_GCS: ""
+  _GEOIP_ASN_GCS: ""
 
 # Connect the secretEnv variables to the actual Secret Manager secrets
 availableSecrets:

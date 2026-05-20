@@ -42,9 +42,13 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED 1
-ENV PORT 8080 
+ENV PORT 8080
 ENV HOSTNAME "0.0.0.0"
-ENV GEOIP_DB_PATH=/app/data/GeoLite2-Country.mmdb
+# Prefer City DB for richer location data; set ASN DB for ISP/org lookups.
+ENV GEOIP_DB_PATH=/app/data/GeoLite2-City.mmdb
+ENV GEOIP_ASN_DB_PATH=/app/data/GeoLite2-ASN.mmdb
+# Default to stdout structured logging so Cloud Run ingests logs without a Logging SA.
+ENV LOG_TO_STDOUT=1
 
 RUN addgroup -S nextjs && adduser -S nextjs -G nextjs
 
@@ -53,7 +57,9 @@ COPY --from=builder --chown=nextjs:nextjs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nextjs /app/.next/standalone/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nextjs /app/.next/static ./.next/static
 # Include GeoLite2 DB in the image (place the .mmdb file under ./data before building)
-COPY --from=builder /app/data/GeoLite2-Country.mmdb /app/data/GeoLite2-Country.mmdb
+## Include GeoLite2 DBs in the image (place the .mmdb files under ./data before building)
+COPY --from=builder /app/data/GeoLite2-City.mmdb /app/data/GeoLite2-City.mmdb
+COPY --from=builder /app/data/GeoLite2-ASN.mmdb /app/data/GeoLite2-ASN.mmdb
 
 USER nextjs
 EXPOSE 8080

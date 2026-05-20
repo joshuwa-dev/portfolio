@@ -92,7 +92,8 @@ export async function POST(request) {
     let geo = null;
     try {
       const result = await geoLookup(clientIp);
-      if (result && result.source === 'maxmind') {
+      // Accept any maxmind-derived source (e.g. 'maxmind-city', 'maxmind-city+asn')
+      if (result && result.source && String(result.source).includes('maxmind')) {
         geo = result;
       } else if (result && result.source === 'db-missing') {
         // Attempt fallback to internal proxy so deployments without the DB still work.
@@ -130,6 +131,13 @@ export async function POST(request) {
 
       ip_address: clientIp,
       country: (geo && (geo.countryCode || geo.country)) || body.country || null,
+      city: (geo && (geo.cityName || geo.city)) || null,
+      subdivision: (geo && geo.subdivision) || null,
+      latitude: (geo && geo.latitude) || null,
+      longitude: (geo && geo.longitude) || null,
+      time_zone: (geo && geo.time_zone) || null,
+      isp: (geo && geo.isp) || null,
+      organization: (geo && geo.organization) || null,
       metadata: body.metadata || null,
 
       user_agent: userAgent,
