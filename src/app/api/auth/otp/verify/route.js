@@ -269,7 +269,6 @@ export async function POST(req) {
               method: "otp_verify",
             },
           };
-          console.log("EMIT auth.account.unlocked ->", JSON.stringify(payload));
           await postAuthLog(req, payload);
         } catch (e) {}
       }
