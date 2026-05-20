@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { authLogsLimiter } from "../../../lib/inMemoryRateLimiter";
-import { lookup as geoLookup } from "../../../lib/geoipRemote";
+import { lookup as geoLookup, isAvailable as geoAvailable } from "../../../lib/geoipLocal";
 import { Logging } from "@google-cloud/logging";
 
 // Initialize Cloud Logging client. Uses ADC in Cloud Run or
@@ -77,12 +77,40 @@ export async function POST(request) {
 
     const userAgent = request.headers.get("user-agent") || "";
 
-    // Try a quick remote GeoIP lookup (best-effort) to enrich logs with location.
+    
+
+    // Instant GeoIP lookup via local MaxMind DB if available. Falls back to
+    // the `/api/geoip` proxy when the DB is missing.
     let geo = null;
     try {
-      geo = await geoLookup(clientIp);
-    } catch (err) {
-      geo = null;
+      const result = await geoLookup(clientIp);
+      if (result && result.source === 'maxmind') {
+        geo = result;
+      } else if (result && result.source === 'db-missing') {
+        // Attempt fallback to internal proxy so deployments without the DB still work.
+        try {
+          const origin = new URL(request.url).origin;
+          const fallback = await fetch(`${origin}/api/geoip?ip=${encodeURIComponent(clientIp)}`);
+          if (fallback.ok) {
+            const j = await fallback.json().catch(() => null);
+            geo = j ? { country: j.country, source: 'proxy' } : null;
+          }
+        } catch (e) {
+          /* ignore fallback errors */
+        }
+      }
+    } catch (e) {
+      console.warn('auth-logs: geo lookup error', e?.message || e);
+    }
+
+    // Optional debug logging — enable by setting DEBUG_AUTH_LOGS=1 or GEOIP_DEBUG=1
+    const DEBUG_GEO = process.env.DEBUG_AUTH_LOGS === "1" || process.env.GEOIP_DEBUG === "1";
+    if (DEBUG_GEO) {
+      try {
+        console.info("auth-logs: geoLookup result", { clientIp, geo });
+      } catch (e) {
+        /* ignore */
+      }
     }
 
     const event = {
@@ -93,12 +121,8 @@ export async function POST(request) {
       email: body.email || null,
 
       ip_address: clientIp,
-      country: body.country || (geo?.country_name || geo?.country || null),
-      country_code: geo?.country || null,
-      city: geo?.city || null,
-      region: geo?.region || null,
-      latitude: geo?.latitude || null,
-      longitude: geo?.longitude || null,
+      country: (geo && (geo.countryCode || geo.country)) || body.country || null,
+      metadata: body.metadata || null,
 
       user_agent: userAgent,
       platform: body.platform || "web",

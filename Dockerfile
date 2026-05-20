@@ -44,6 +44,7 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED 1
 ENV PORT 8080 
 ENV HOSTNAME "0.0.0.0"
+ENV GEOIP_DB_PATH=/app/data/GeoLite2-Country.mmdb
 
 RUN addgroup -S nextjs && adduser -S nextjs -G nextjs
 
@@ -51,6 +52,8 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nextjs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nextjs /app/.next/standalone/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nextjs /app/.next/static ./.next/static
+# Include GeoLite2 DB in the image (place the .mmdb file under ./data before building)
+COPY --from=builder /app/data/GeoLite2-Country.mmdb /app/data/GeoLite2-Country.mmdb
 
 USER nextjs
 EXPOSE 8080

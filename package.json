@@ -31,6 +31,8 @@
     "firebase-admin": "^13.7.0",
     "i18n-iso-countries": "^7.14.0",
     "keen-slider": "^6.8.6",
+    "maxmin": "^4.1.0",
+    "maxmind": "^5.0.6",
     "next": "^15.5.12",
     "nodemailer": "^8.0.7",
     "postcss": "^8.5.6",
