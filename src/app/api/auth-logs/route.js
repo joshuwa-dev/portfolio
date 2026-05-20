@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { authLogsLimiter } from "../../../lib/inMemoryRateLimiter";
+import { lookup as geoLookup } from "../../../lib/geoipRemote";
 import { Logging } from "@google-cloud/logging";
 
 // Initialize Cloud Logging client. Uses ADC in Cloud Run or
@@ -76,6 +77,14 @@ export async function POST(request) {
 
     const userAgent = request.headers.get("user-agent") || "";
 
+    // Try a quick remote GeoIP lookup (best-effort) to enrich logs with location.
+    let geo = null;
+    try {
+      geo = await geoLookup(clientIp);
+    } catch (err) {
+      geo = null;
+    }
+
     const event = {
       event_timestamp: new Date().toISOString(),
       event_type: normalizeAndValidateEventType(body.eventType),
@@ -84,7 +93,12 @@ export async function POST(request) {
       email: body.email || null,
 
       ip_address: clientIp,
-      country: body.country || null,
+      country: body.country || (geo?.country_name || geo?.country || null),
+      country_code: geo?.country || null,
+      city: geo?.city || null,
+      region: geo?.region || null,
+      latitude: geo?.latitude || null,
+      longitude: geo?.longitude || null,
 
       user_agent: userAgent,
       platform: body.platform || "web",

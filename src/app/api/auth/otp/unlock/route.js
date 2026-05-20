@@ -90,7 +90,10 @@ export async function POST(req) {
           authSource: "google",
           metadata: { unlockedAt: new Date().toISOString(), method: "google" },
         };
-        // emitted to auth-logs endpoint
+        console.log(
+          "EMIT auth.account.unlocked (unlock endpoint) ->",
+          JSON.stringify(payload),
+        );
         await fetch(url, {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -109,7 +112,10 @@ export async function POST(req) {
               method: "google",
             },
           };
-          // emitted to auth-logs endpoint
+          console.log(
+            "EMIT auth.login.success (unlock endpoint) ->",
+            JSON.stringify(successPayload),
+          );
           await fetch(url, {
             method: "POST",
             headers: { "content-type": "application/json" },

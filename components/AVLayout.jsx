@@ -233,6 +233,12 @@ function Navbar() {
 
   function handleLoginChange(field, value) {
     setLoginForm((current) => ({ ...current, [field]: value }));
+    if (field === "email") {
+      setOtpError("");
+      setOtpNeedsGoogle(false);
+      setOtpShowGoogleLink(false);
+      setLoginError("");
+    }
   }
 
   function closeLoginModal() {
@@ -456,6 +462,7 @@ function Navbar() {
         setOtpNeedsGoogle(false);
         setOtpRequested(false);
         setOtpError("");
+        setOtpShowGoogleLink(true);
         setLoginMethod("options");
         setLoginError(
           "No account found for that email. Please continue with Google to create an account.",
@@ -465,10 +472,17 @@ function Navbar() {
 
       if (!res.ok) {
         if (data?.error === "locked") {
-          setOtpLocked(true);
+          // Immediately return to the main options modal and prompt Google
+          // when the server reports the account is locked — do not keep the
+          // user on the OTP entry screen.
+          setOtpRequested(false);
+          setOtpError("");
+          setOtpLocked(false);
           setOtpLockedUntil(null);
-          setOtpError(
-            data?.message || "Too many failed attempts. Try again later.",
+          setOtpShowGoogleLink(true);
+          setLoginMethod("options");
+          setLoginError(
+            data?.message || "Your account is locked. Please continue with Google to verify and unlock.",
           );
           return;
         }
@@ -492,6 +506,7 @@ function Navbar() {
       setOtpLockedUntil(null);
       setOtpShowGoogleLink(false);
       setOtpNotice("A 6-digit code was sent to your email.");
+      setLoginError("");
     } catch (err) {
       setOtpError(err?.message || "Unable to request OTP.");
     } finally {
@@ -951,27 +966,29 @@ function Navbar() {
                           Continue with Google
                         </button>
 
-                        <div className="flex items-center gap-3 py-1">
-                          <div className="h-px flex-1 bg-slate-200" />
-                          <span className="text-xs font-medium uppercase tracking-[0.12em] text-slate-400">
-                            or
-                          </span>
-                          <div className="h-px flex-1 bg-slate-200" />
-                        </div>
+                        {!otpShowGoogleLink ? (
+                          <div className="flex items-center gap-3 py-1">
+                            <div className="h-px flex-1 bg-slate-200" />
+                            <span className="text-xs font-medium uppercase tracking-[0.12em] text-slate-400">
+                              or
+                            </span>
+                            <div className="h-px flex-1 bg-slate-200" />
+                          </div>
+                        ) : null}
 
-                        <button
-                          type="button"
-                          className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-                          onClick={() => {
-                            if (otpLocked) return;
-                            setLoginMethod("email");
-                          }}
-                          disabled={authLoading || otpLocked}
-                        >
-                          {otpLocked
-                            ? "Email sign-in locked"
-                            : "Continue with Email Link"}
-                        </button>
+                        {!otpShowGoogleLink ? (
+                          <button
+                            type="button"
+                            className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                            onClick={() => {
+                              if (otpLocked) return;
+                              setLoginMethod("email");
+                            }}
+                            disabled={authLoading || otpLocked}
+                          >
+                            {otpLocked ? "Email sign-in locked" : "Continue with Email Link"}
+                          </button>
+                        ) : null}
                       </div>
                     ) : otpRequested ? (
                       otpLocked || otpShowGoogleLink ? (
@@ -1082,7 +1099,7 @@ function Navbar() {
                               type="button"
                               className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50"
                               onClick={() => handleEmailOtpRequest(null, true)}
-                              disabled={otpLoading || otpLocked}
+                              disabled={otpLoading || otpLocked || otpShowGoogleLink}
                               title={
                                 otpLocked
                                   ? "Account locked — unlock with Google"
@@ -1126,7 +1143,7 @@ function Navbar() {
                           <button
                             type="submit"
                             className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
-                            disabled={authLoading || otpLoading}
+                            disabled={authLoading || otpLoading || otpShowGoogleLink}
                           >
                             {otpLoading ? "Sending..." : "Send code"}
                           </button>
