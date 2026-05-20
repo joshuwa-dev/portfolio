@@ -90,6 +90,8 @@ export async function POST(request) {
   try {
     const body = await request.json().catch(() => ({}));
 
+    const normalizedEventType = normalizeAndValidateEventType(body.eventType);
+
     // If client didn't provide identifying info (email/userId), try to
     // populate it from an Authorization: Bearer <idToken> header by
     // verifying with firebase-admin when available. This is best-effort
@@ -97,7 +99,11 @@ export async function POST(request) {
     let resolvedEmail = body.email || null;
     let resolvedUserId = body.userId || null;
     const authHeader = request.headers.get("authorization") || "";
-    if ((!resolvedEmail || !resolvedUserId) && authHeader.startsWith("Bearer ")) {
+    let verificationStatus = "skipped";
+    if (
+      (!resolvedEmail || !resolvedUserId) &&
+      authHeader.startsWith("Bearer ")
+    ) {
       const idToken = authHeader.split("Bearer ")[1];
       try {
         if (!admin.apps.length) {
@@ -136,15 +142,42 @@ export async function POST(request) {
         }
 
         if (admin.apps.length) {
-          const decoded = await admin.auth().verifyIdToken(idToken).catch(() => null);
+          const decoded = await admin
+            .auth()
+            .verifyIdToken(idToken)
+            .catch(() => null);
           if (decoded) {
             resolvedEmail = resolvedEmail || decoded.email || null;
             resolvedUserId = resolvedUserId || decoded.uid || null;
+            verificationStatus = "ok";
+          } else {
+            verificationStatus = "failed";
           }
+        } else {
+          verificationStatus = "no-admin";
         }
       } catch (e) {
         // best-effort: do not block logging if verification fails
         console.warn("auth-logs: idToken verify failed:", e?.message || e);
+      }
+    }
+
+    // If we have a userId but no email, attempt a best-effort lookup via
+    // Firebase Admin `getUser()` to populate the email for richer logs.
+    if (resolvedUserId && !resolvedEmail && admin.apps.length) {
+      try {
+        const u = await admin
+          .auth()
+          .getUser(resolvedUserId)
+          .catch(() => null);
+        if (u && u.email) {
+          resolvedEmail = u.email;
+          // mark that we augmented the identity
+          verificationStatus =
+            verificationStatus === "ok" ? "ok+lookup" : "lookup";
+        }
+      } catch (e) {
+        console.warn("auth-logs: getUser lookup failed:", e?.message || e);
       }
     }
 
@@ -200,6 +233,15 @@ export async function POST(request) {
     if (DEBUG_GEO) {
       try {
         console.info("auth-logs: geoLookup result", { clientIp, geo });
+        if (normalizedEventType === "auth.logout") {
+          console.info("auth-logs: logout debug", {
+            hasAuthHeader: !!authHeader,
+            resolvedEmail,
+            resolvedUserId,
+            adminApps: admin.apps.length,
+            verificationStatus,
+          });
+        }
       } catch (e) {
         /* ignore */
       }
@@ -207,7 +249,7 @@ export async function POST(request) {
 
     const event = {
       event_timestamp: new Date().toISOString(),
-      event_type: normalizeAndValidateEventType(body.eventType),
+      event_type: normalizedEventType,
 
       user_id: resolvedUserId || null,
       email: resolvedEmail || null,

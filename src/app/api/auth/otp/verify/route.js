@@ -278,6 +278,18 @@ export async function POST(req) {
       console.warn("Failed to clear otp lock:", e?.message || e);
     }
 
+    // Emit auth.login.success for successful OTP login (regardless of prior lock).
+    try {
+      await postAuthLog(req, {
+        eventType: "auth.login.success",
+        userId: String(email).toLowerCase(),
+        email: String(email).toLowerCase(),
+        platform: "web",
+        provider: "email_otp",
+        metadata: { method: "otp_verify" },
+      });
+    } catch (e) {}
+
     return NextResponse.json({ token: customToken });
   } catch (err) {
     console.error("OTP verify error:", err);
