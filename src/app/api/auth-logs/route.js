@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { authLogsLimiter } from "../../../lib/inMemoryRateLimiter";
-import { lookup as geoLookup, isAvailable as geoAvailable } from "../../../lib/geoipLocal";
+import {
+  lookup as geoLookup,
+  isAvailable as geoAvailable,
+} from "../../../lib/geoipLocal";
 import { Logging } from "@google-cloud/logging";
 
 // Initialize Cloud Logging client. Uses ADC in Cloud Run or
@@ -17,7 +20,7 @@ async function writeStructuredAuthLog(payload) {
   // If LOG_TO_STDOUT=1 is set, emit JSON to stdout so platform logging
   // agents (Cloud Run, GKE) capture the same structured payload without
   // requiring a service account with Logging permissions.
-  if (process.env.LOG_TO_STDOUT === '1') {
+  if (process.env.LOG_TO_STDOUT === "1") {
     console.log(JSON.stringify(payload));
     return;
   }
@@ -85,35 +88,40 @@ export async function POST(request) {
 
     const userAgent = request.headers.get("user-agent") || "";
 
-    
-
     // Instant GeoIP lookup via local MaxMind DB if available. Falls back to
     // the `/api/geoip` proxy when the DB is missing.
     let geo = null;
     try {
       const result = await geoLookup(clientIp);
       // Accept any maxmind-derived source (e.g. 'maxmind-city', 'maxmind-city+asn')
-      if (result && result.source && String(result.source).includes('maxmind')) {
+      if (
+        result &&
+        result.source &&
+        String(result.source).includes("maxmind")
+      ) {
         geo = result;
-      } else if (result && result.source === 'db-missing') {
+      } else if (result && result.source === "db-missing") {
         // Attempt fallback to internal proxy so deployments without the DB still work.
         try {
           const origin = new URL(request.url).origin;
-          const fallback = await fetch(`${origin}/api/geoip?ip=${encodeURIComponent(clientIp)}`);
+          const fallback = await fetch(
+            `${origin}/api/geoip?ip=${encodeURIComponent(clientIp)}`,
+          );
           if (fallback.ok) {
             const j = await fallback.json().catch(() => null);
-            geo = j ? { country: j.country, source: 'proxy' } : null;
+            geo = j ? { country: j.country, source: "proxy" } : null;
           }
         } catch (e) {
           /* ignore fallback errors */
         }
       }
     } catch (e) {
-      console.warn('auth-logs: geo lookup error', e?.message || e);
+      console.warn("auth-logs: geo lookup error", e?.message || e);
     }
 
     // Optional debug logging — enable by setting DEBUG_AUTH_LOGS=1 or GEOIP_DEBUG=1
-    const DEBUG_GEO = process.env.DEBUG_AUTH_LOGS === "1" || process.env.GEOIP_DEBUG === "1";
+    const DEBUG_GEO =
+      process.env.DEBUG_AUTH_LOGS === "1" || process.env.GEOIP_DEBUG === "1";
     if (DEBUG_GEO) {
       try {
         console.info("auth-logs: geoLookup result", { clientIp, geo });
@@ -130,7 +138,8 @@ export async function POST(request) {
       email: body.email || null,
 
       ip_address: clientIp,
-      country: (geo && (geo.countryCode || geo.country)) || body.country || null,
+      country:
+        (geo && (geo.countryCode || geo.country)) || body.country || null,
       city: (geo && (geo.cityName || geo.city)) || null,
       subdivision: (geo && geo.subdivision) || null,
       latitude: (geo && geo.latitude) || null,

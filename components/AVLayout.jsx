@@ -482,7 +482,8 @@ function Navbar() {
           setOtpShowGoogleLink(true);
           setLoginMethod("options");
           setLoginError(
-            data?.message || "Your account is locked. Please continue with Google to verify and unlock.",
+            data?.message ||
+              "Your account is locked. Please continue with Google to verify and unlock.",
           );
           return;
         }
@@ -986,7 +987,9 @@ function Navbar() {
                             }}
                             disabled={authLoading || otpLocked}
                           >
-                            {otpLocked ? "Email sign-in locked" : "Continue with Email Link"}
+                            {otpLocked
+                              ? "Email sign-in locked"
+                              : "Continue with Email Link"}
                           </button>
                         ) : null}
                       </div>
@@ -1099,7 +1102,9 @@ function Navbar() {
                               type="button"
                               className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50"
                               onClick={() => handleEmailOtpRequest(null, true)}
-                              disabled={otpLoading || otpLocked || otpShowGoogleLink}
+                              disabled={
+                                otpLoading || otpLocked || otpShowGoogleLink
+                              }
                               title={
                                 otpLocked
                                   ? "Account locked — unlock with Google"
@@ -1143,7 +1148,9 @@ function Navbar() {
                           <button
                             type="submit"
                             className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
-                            disabled={authLoading || otpLoading || otpShowGoogleLink}
+                            disabled={
+                              authLoading || otpLoading || otpShowGoogleLink
+                            }
                           >
                             {otpLoading ? "Sending..." : "Send code"}
                           </button>
