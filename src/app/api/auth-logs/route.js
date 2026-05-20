@@ -5,6 +5,23 @@ import {
   isAvailable as geoAvailable,
 } from "../../../lib/geoipLocal";
 import { Logging } from "@google-cloud/logging";
+import admin from "firebase-admin";
+import fs from "fs";
+import path from "path";
+
+function parseServiceAccountFromEnv(raw) {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    try {
+      const decoded = Buffer.from(raw, "base64").toString("utf8");
+      return JSON.parse(decoded);
+    } catch (e2) {
+      return null;
+    }
+  }
+}
 
 // Initialize Cloud Logging client. Uses ADC in Cloud Run or
 // GOOGLE_APPLICATION_CREDENTIALS locally when available.
@@ -73,6 +90,64 @@ export async function POST(request) {
   try {
     const body = await request.json().catch(() => ({}));
 
+    // If client didn't provide identifying info (email/userId), try to
+    // populate it from an Authorization: Bearer <idToken> header by
+    // verifying with firebase-admin when available. This is best-effort
+    // and silently skips verification if admin can't be initialized.
+    let resolvedEmail = body.email || null;
+    let resolvedUserId = body.userId || null;
+    const authHeader = request.headers.get("authorization") || "";
+    if ((!resolvedEmail || !resolvedUserId) && authHeader.startsWith("Bearer ")) {
+      const idToken = authHeader.split("Bearer ")[1];
+      try {
+        if (!admin.apps.length) {
+          const envSvcRaw =
+            process.env.FIREBASE_SERVICE_ACCOUNT ||
+            process.env.FIREBASE_SERVICE_ACCOUNT_B64;
+          const envSvc = parseServiceAccountFromEnv(envSvcRaw);
+          if (envSvc) {
+            admin.initializeApp({
+              credential: admin.credential.cert(envSvc),
+              projectId: envSvc.project_id || envSvc.projectId,
+            });
+          } else {
+            const svcPath = path.join(
+              process.cwd(),
+              ".gitignore",
+              "cobary-ed770-firebase-adminsdk-fbsvc-14428ea066.json",
+            );
+            if (fs.existsSync(svcPath)) {
+              const svc = JSON.parse(fs.readFileSync(svcPath, "utf8"));
+              admin.initializeApp({
+                credential: admin.credential.cert(svc),
+                projectId: svc.project_id,
+              });
+            } else {
+              // Fallback to application default credentials (ADC)
+              try {
+                admin.initializeApp({
+                  credential: admin.credential.applicationDefault(),
+                });
+              } catch (e) {
+                // ignore init error; verification below will be skipped
+              }
+            }
+          }
+        }
+
+        if (admin.apps.length) {
+          const decoded = await admin.auth().verifyIdToken(idToken).catch(() => null);
+          if (decoded) {
+            resolvedEmail = resolvedEmail || decoded.email || null;
+            resolvedUserId = resolvedUserId || decoded.uid || null;
+          }
+        }
+      } catch (e) {
+        // best-effort: do not block logging if verification fails
+        console.warn("auth-logs: idToken verify failed:", e?.message || e);
+      }
+    }
+
     const ipHeader =
       request.headers.get("x-forwarded-for") ||
       request.headers.get("x-real-ip");
@@ -80,7 +155,7 @@ export async function POST(request) {
 
     // Rate limiting keyed by authenticated userId when present, otherwise by IP.
     // Use a higher-capacity limiter for auth logs so observability isn't easily throttled.
-    const rateKey = body.userId || clientIp;
+    const rateKey = resolvedUserId || clientIp;
     if (!authLogsLimiter.tryConsume(rateKey)) {
       console.warn("auth-logs: rate_limited", { rateKey });
       return NextResponse.json({ error: "rate_limited" }, { status: 429 });
@@ -134,8 +209,8 @@ export async function POST(request) {
       event_timestamp: new Date().toISOString(),
       event_type: normalizeAndValidateEventType(body.eventType),
 
-      user_id: body.userId || null,
-      email: body.email || null,
+      user_id: resolvedUserId || null,
+      email: resolvedEmail || null,
 
       ip_address: clientIp,
       country:
