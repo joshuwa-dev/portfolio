@@ -41,3 +41,10 @@ export const defaultLimiter = new InMemoryRateLimiter({
   tokensPerInterval: 3,
   intervalMs: 60_000,
 });
+
+// A separate limiter for auth-logs ingestion with higher capacity to avoid
+// throttling observability events during normal operation.
+export const authLogsLimiter = new InMemoryRateLimiter({
+  tokensPerInterval: 60,
+  intervalMs: 60_000,
+});

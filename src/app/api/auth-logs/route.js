@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { defaultLimiter } from "../../../lib/inMemoryRateLimiter";
+import { authLogsLimiter } from "../../../lib/inMemoryRateLimiter";
 import { Logging } from "@google-cloud/logging";
 
 // Initialize Cloud Logging client. Uses ADC in Cloud Run or
@@ -32,8 +32,10 @@ const ALLOWED_EVENT_TYPES = new Set([
   "auth.login.failed",
   "auth.logout",
   "auth.password.reset",
-  "auth.mfa.challenge",
   "auth.mfa.failed",
+  "auth.mfa.challenge",
+  "auth.account.unlocked",
+  "auth.account.ratelimited",
   "auth.account.locked",
   "auth.token.refresh",
 ]);
@@ -65,9 +67,10 @@ export async function POST(request) {
     const clientIp = ipHeader ? ipHeader.split(",")[0].trim() : "unknown";
 
     // Rate limiting keyed by authenticated userId when present, otherwise by IP.
-    // This allows logged-in users a dedicated quota while still protecting unauthenticated traffic.
+    // Use a higher-capacity limiter for auth logs so observability isn't easily throttled.
     const rateKey = body.userId || clientIp;
-    if (!defaultLimiter.tryConsume(rateKey)) {
+    if (!authLogsLimiter.tryConsume(rateKey)) {
+      console.warn("auth-logs: rate_limited", { rateKey });
       return NextResponse.json({ error: "rate_limited" }, { status: 429 });
     }
 
@@ -76,14 +79,25 @@ export async function POST(request) {
     const event = {
       event_timestamp: new Date().toISOString(),
       event_type: normalizeAndValidateEventType(body.eventType),
+
       user_id: body.userId || null,
       email: body.email || null,
+
       ip_address: clientIp,
       country: body.country || null,
+
       user_agent: userAgent,
       platform: body.platform || "web",
+
       provider: body.provider || null,
       app_version: body.appVersion || null,
+
+      // Optional additional context for richer auth logs
+      session_id: body.sessionId || null,
+      device_id: body.deviceId || null,
+      login_method: body.loginMethod || null,
+      failure_reason: body.failureReason || null,
+
       metadata: body.metadata || null,
     };
 

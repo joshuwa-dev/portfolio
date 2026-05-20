@@ -38,18 +38,16 @@ export function CityselectProvider({ children }) {
 
       // emit minimal auth events for analytics (best-effort)
       try {
-        if (user && lastUidRef.current !== user.uid) {
-          lastUidRef.current = user.uid;
-          void sendAuthEvent({
-            eventType: "auth.login.success",
-            userId: user.uid,
-            email: user.email || null,
-            platform: "web",
-          });
-        } else if (!user && lastUidRef.current) {
+        // Only emit logout events here to avoid duplicate "login" events
+        // (login handling and canonical profile sync happen centrally
+        // in `AVLayout`). This keeps analytics minimal and prevents
+        // double-reporting when multiple components listen for auth.
+        if (!user && lastUidRef.current) {
           const prev = lastUidRef.current;
           lastUidRef.current = null;
           void sendAuthEvent({ eventType: "auth.logout", userId: prev });
+        } else if (user) {
+          lastUidRef.current = user.uid;
         }
       } catch (err) {
         // best-effort

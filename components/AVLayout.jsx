@@ -13,6 +13,7 @@ import {
   setPersistence,
   signInWithEmailLink,
   signInWithPopup,
+  signInWithCustomToken,
   signOut,
 } from "firebase/auth";
 import { auth } from "../src/lib/Firebase";
@@ -20,7 +21,6 @@ import {
   logUserEvent,
   upsertCanonicalUserProfile,
 } from "../src/lib/userIdentity";
-import { sendAuthEvent } from "../src/lib/authAnalytics";
 import {
   CityselectContext,
   CityselectProvider,
@@ -109,9 +109,18 @@ function Navbar() {
   const [userEmail, setUserEmail] = useState("");
   const [loginMethod, setLoginMethod] = useState("options");
   const [authLoading, setAuthLoading] = useState(false);
-  const [loginForm, setLoginForm] = useState({ email: "", remember: true });
+  const [loginForm, setLoginForm] = useState({ email: "", remember: false });
   const [loginError, setLoginError] = useState("");
   const [loginNotice, setLoginNotice] = useState("");
+  const [otpRequested, setOtpRequested] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpError, setOtpError] = useState("");
+  const [otpNeedsGoogle, setOtpNeedsGoogle] = useState(false);
+  const [otpNotice, setOtpNotice] = useState("");
+  const [otpShowGoogleLink, setOtpShowGoogleLink] = useState(false);
+  const [otpLocked, setOtpLocked] = useState(false);
+  const [otpLockedUntil, setOtpLockedUntil] = useState(null);
   const [authTransitionNotice, setAuthTransitionNotice] = useState("");
   const [pendingEmailLinkUrl, setPendingEmailLinkUrl] = useState("");
   const [showLoginSuccess, setShowLoginSuccess] = useState(false);
@@ -184,22 +193,6 @@ function Navbar() {
                 },
               });
 
-              // best-effort client-side analytics emission
-              void sendAuthEvent({
-                eventType: "auth.login.success",
-                userId: user.uid,
-                email: user.email || null,
-                provider: (user.providerData || [])
-                  .map((entry) => entry?.providerId)
-                  .filter(Boolean),
-                platform: "web",
-                metadata: {
-                  providers: (user.providerData || [])
-                    .map((entry) => entry?.providerId)
-                    .filter(Boolean),
-                },
-              });
-
               if (postLoginRequestedRef.current) {
                 postLoginRequestedRef.current = false;
                 closeLoginModal();
@@ -222,6 +215,14 @@ function Navbar() {
           setUserPhotoUrl("");
           setLoginNotice("");
           setPendingEmailLinkUrl("");
+          // Clear OTP UI state when signed out so previous attempts don't persist.
+          setOtpRequested(false);
+          setOtpCode("");
+          setOtpNotice("");
+          setOtpError("");
+          setOtpNeedsGoogle(false);
+          setLoginMethod("options");
+          postLoginRequestedRef.current = false;
           lastTrackedUidRef.current = null;
         }
       })();
@@ -239,6 +240,15 @@ function Navbar() {
     setLoginMethod("options");
     setLoginError("");
     setLoginNotice("");
+    // Clear OTP UI state when closing the modal so messages don't persist.
+    setOtpRequested(false);
+    setOtpCode("");
+    setOtpNotice("");
+    setOtpError("");
+    setOtpNeedsGoogle(false);
+    postLoginRequestedRef.current = false;
+    setOtpLocked(false);
+    setOtpLockedUntil(null);
   }
 
   useEffect(() => {
@@ -253,6 +263,17 @@ function Navbar() {
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
   }, [showLoginModal]);
+
+  // Clear OTP UI state whenever user leaves the OTP flow (switches method).
+  useEffect(() => {
+    if (loginMethod !== "otp") {
+      setOtpRequested(false);
+      setOtpCode("");
+      setOtpNotice("");
+      setOtpError("");
+      setOtpNeedsGoogle(false);
+    }
+  }, [loginMethod]);
 
   useEffect(() => {
     if (!loginPromptTick || isLoggedIn) return;
@@ -290,6 +311,20 @@ function Navbar() {
       window.removeEventListener("keydown", handleEscape);
     };
   }, [showOptionsMenu]);
+
+  // Client helper to post auth logs to the server logging endpoint.
+  async function postAuthLogClient(payload) {
+    try {
+      await fetch("/api/auth-logs", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    } catch (e) {
+      // non-blocking
+      console.warn("postAuthLogClient failed:", e?.message || e);
+    }
+  }
 
   useEffect(() => {
     if (!showCountrySearch) return;
@@ -379,17 +414,157 @@ function Navbar() {
     } catch (error) {
       postLoginRequestedRef.current = false;
       setLoginError(error?.message || "Unable to send sign-in link right now.");
-      void sendAuthEvent({
-        eventType: "auth.login.failed",
-        provider: "email_link",
-        email: loginForm.email || null,
-        metadata: {
-          message: error?.message || null,
-          code: error?.code || null,
-        },
-      });
     } finally {
       setAuthLoading(false);
+    }
+  }
+
+  // Request a 6-digit OTP for the given email
+  async function handleEmailOtpRequest(event, isResend = false) {
+    if (event && typeof event.preventDefault === "function")
+      event.preventDefault();
+
+    const email = String(loginForm.email || "").trim();
+
+    if (!email) {
+      setOtpError("Enter your email address.");
+      return;
+    }
+
+    if (!email.includes("@")) {
+      setOtpError("Enter a valid email address.");
+      return;
+    }
+
+    try {
+      setOtpLoading(true);
+      setOtpError("");
+      setOtpNeedsGoogle(false);
+      setOtpNotice("");
+
+      const res = await fetch("/api/auth/otp/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, isResend }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      // If server indicates user doesn't exist, return to the main options
+      // modal and show an error instructing the user to continue with Google.
+      if (data?.needsGoogle) {
+        setOtpNeedsGoogle(false);
+        setOtpRequested(false);
+        setOtpError("");
+        setLoginMethod("options");
+        setLoginError(
+          "No account found for that email. Please continue with Google to create an account.",
+        );
+        return;
+      }
+
+      if (!res.ok) {
+        if (data?.error === "locked") {
+          setOtpLocked(true);
+          setOtpLockedUntil(null);
+          setOtpError(
+            data?.message || "Too many failed attempts. Try again later.",
+          );
+          return;
+        }
+        if (data?.error === "rate_limited") {
+          setOtpShowGoogleLink(!!data?.showGoogleLink);
+          setOtpError(
+            data?.message ||
+              data?.error ||
+              "Too many OTP codes requested, try again later.",
+          );
+          return;
+        }
+        setOtpError(
+          data?.message || data?.error || "Unable to send OTP right now.",
+        );
+        return;
+      }
+
+      setOtpRequested(true);
+      setOtpLocked(false);
+      setOtpLockedUntil(null);
+      setOtpShowGoogleLink(false);
+      setOtpNotice("A 6-digit code was sent to your email.");
+    } catch (err) {
+      setOtpError(err?.message || "Unable to request OTP.");
+    } finally {
+      setOtpLoading(false);
+    }
+  }
+
+  // Verify OTP and sign in with the returned custom token
+  async function handleOtpVerify(event) {
+    event.preventDefault();
+
+    const email = String(loginForm.email || "").trim();
+    const code = String(otpCode || "").trim();
+
+    if (!email) {
+      setOtpError("Enter your email address.");
+      return;
+    }
+
+    if (!code) {
+      setOtpError("Enter the 6-digit code.");
+      return;
+    }
+
+    try {
+      setOtpLoading(true);
+      setOtpError("");
+      setOtpNotice("");
+
+      const res = await fetch("/api/auth/otp/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (data?.error === "locked") {
+          setOtpLocked(true);
+          setOtpLockedUntil(null);
+          setOtpError(
+            data?.message || "Too many failed attempts. Try again later.",
+          );
+          return;
+        }
+        let msg = data?.message || "Invalid or expired code.";
+        if (data?.remainingAttempts != null) {
+          msg = `${msg} ${data.remainingAttempts} attempts remaining.`;
+        }
+        setOtpError(msg);
+        return;
+      }
+
+      const token = data?.token;
+      if (!token) {
+        setOtpError("No token returned from server.");
+        return;
+      }
+
+      await setPersistence(
+        auth,
+        loginForm.remember
+          ? browserLocalPersistence
+          : browserSessionPersistence,
+      );
+
+      await signInWithCustomToken(auth, token);
+      postLoginRequestedRef.current = true;
+      setOtpNotice("Verified — signing you in...");
+    } catch (err) {
+      setOtpError(err?.message || "Unable to verify code.");
+    } finally {
+      setOtpLoading(false);
     }
   }
 
@@ -400,7 +575,7 @@ function Navbar() {
     const storedEmail =
       window.localStorage.getItem(EMAIL_LINK_STORAGE_KEY) || "";
     const rememberMode =
-      window.localStorage.getItem(EMAIL_LINK_REMEMBER_KEY) || "local";
+      window.localStorage.getItem(EMAIL_LINK_REMEMBER_KEY) || "session";
 
     if (!storedEmail) {
       setPendingEmailLinkUrl(window.location.href);
@@ -434,15 +609,6 @@ function Navbar() {
         setLoginError(
           error?.message || "Unable to complete email link sign-in.",
         );
-        void sendAuthEvent({
-          eventType: "auth.login.failed",
-          provider: "email_link",
-          email: storedEmail || null,
-          metadata: {
-            message: error?.message || null,
-            code: error?.code || null,
-          },
-        });
       } finally {
         setAuthLoading(false);
       }
@@ -469,7 +635,24 @@ function Navbar() {
           : browserSessionPersistence,
       );
 
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      // After successful Google sign-in clear any server-side OTP lock for this account.
+      try {
+        const idToken = await auth.currentUser.getIdToken();
+        await fetch("/api/auth/otp/unlock", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ idToken }),
+        });
+      } catch (e) {
+        // non-blocking
+        console.warn("Failed to call unlock endpoint:", e?.message || e);
+      }
+      try {
+        // optimistic: clear client lock state when unlock endpoint was called
+        setOtpLocked(false);
+        setOtpLockedUntil(null);
+      } catch (e) {}
       closeLoginModal();
     } catch (error) {
       postLoginRequestedRef.current = false;
@@ -477,14 +660,21 @@ function Navbar() {
       setShowLoginModal(true);
       setLoginMethod("options");
       setLoginError(formatAuthError(error));
-      void sendAuthEvent({
-        eventType: "auth.login.failed",
-        provider: "google",
-        metadata: {
-          message: error?.message || null,
-          code: error?.code || null,
-        },
-      });
+
+      // Emit auth.login.failed so failures from provider sign-in are recorded.
+      try {
+        await postAuthLogClient({
+          eventType: "auth.login.failed",
+          provider: "google_oauth",
+          failureReason:
+            error?.code || error?.message || "google_signin_failed",
+          platform: "web",
+          user_agent:
+            typeof navigator !== "undefined" ? navigator.userAgent : null,
+        });
+      } catch (e) {
+        // best-effort
+      }
     } finally {
       setAuthTransitionNotice("");
       setAuthLoading(false);
@@ -508,14 +698,16 @@ function Navbar() {
       console.error("Failed to log logout event", error);
     }
 
+    // Clear OTP UI state immediately when logging out so previous OTP values
+    // or notices are not left visible.
+    setOtpRequested(false);
+    setOtpCode("");
+    setOtpNotice("");
+    setOtpError("");
+    setOtpNeedsGoogle(false);
+    postLoginRequestedRef.current = false;
+
     await signOut(auth);
-    try {
-      // best-effort emit logout event (use previously-known uid if available)
-      const emittedUid = auth.currentUser?.uid || null;
-      void sendAuthEvent({ eventType: "auth.logout", userId: emittedUid });
-    } catch (err) {
-      // ignore
-    }
   }
 
   const moodToneStyles = {
@@ -746,17 +938,7 @@ function Navbar() {
                   </div>
 
                   <div className="mt-6 space-y-4">
-                    <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                      <input
-                        type="checkbox"
-                        checked={loginForm.remember}
-                        onChange={(event) =>
-                          handleLoginChange("remember", event.target.checked)
-                        }
-                        className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
-                      />
-                      Keep me signed in on this device
-                    </label>
+                    {/* 'Keep me signed in' moved to modal footer */}
 
                     {loginMethod === "options" ? (
                       <div className="space-y-2">
@@ -780,16 +962,142 @@ function Navbar() {
                         <button
                           type="button"
                           className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-                          onClick={() => setLoginMethod("email")}
-                          disabled={authLoading}
+                          onClick={() => {
+                            if (otpLocked) return;
+                            setLoginMethod("email");
+                          }}
+                          disabled={authLoading || otpLocked}
                         >
-                          Continue with Email Link
+                          {otpLocked
+                            ? "Email sign-in locked"
+                            : "Continue with Email Link"}
                         </button>
                       </div>
+                    ) : otpRequested ? (
+                      otpLocked || otpShowGoogleLink ? (
+                        <div className="space-y-4">
+                          <form className="space-y-4">
+                            <label className="block text-sm font-medium text-slate-700">
+                              Email
+                              <input
+                                type="email"
+                                value={loginForm.email}
+                                onChange={(event) =>
+                                  handleLoginChange("email", event.target.value)
+                                }
+                                className="mt-1.5 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-sm text-slate-500 outline-none"
+                                placeholder="you@example.com"
+                                autoComplete="email"
+                                disabled
+                              />
+                            </label>
+
+                            <div>
+                              <p className="text-sm text-rose-700">
+                                {otpShowGoogleLink && !otpLocked
+                                  ? otpError ||
+                                    "Too many OTP codes requested - Sign in with Google."
+                                  : "Your account is locked due to too many incorrect OTP attempts. Please sign in with Google to verify and unlock your account."}
+                              </p>
+
+                              {otpLocked && otpLockedUntil ? (
+                                <p className="mt-2 text-xs text-slate-500">
+                                  Locked until:{" "}
+                                  {new Date(otpLockedUntil).toLocaleString()}
+                                </p>
+                              ) : null}
+
+                              <div className="pt-3">
+                                <button
+                                  type="button"
+                                  className="w-full rounded-xl bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700"
+                                  onClick={handleGoogleLogin}
+                                >
+                                  Sign in with Google
+                                </button>
+                              </div>
+                            </div>
+                          </form>
+                        </div>
+                      ) : (
+                        <form className="space-y-4" onSubmit={handleOtpVerify}>
+                          <label className="block text-sm font-medium text-slate-700">
+                            Email
+                            <input
+                              type="email"
+                              value={loginForm.email}
+                              onChange={(event) =>
+                                handleLoginChange("email", event.target.value)
+                              }
+                              className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100"
+                              placeholder="you@example.com"
+                              autoComplete="email"
+                            />
+                          </label>
+
+                          <label className="block text-sm font-medium text-slate-700">
+                            Enter 6‑digit code
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              maxLength={6}
+                              value={otpCode}
+                              onChange={(e) =>
+                                setOtpCode(
+                                  String(e.target.value || "")
+                                    .replace(/\D/g, "")
+                                    .slice(0, 6),
+                                )
+                              }
+                              className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100"
+                              placeholder="123456"
+                              autoComplete="one-time-code"
+                            />
+                          </label>
+
+                          <div className="pt-1 flex gap-2">
+                            <button
+                              type="button"
+                              className="flex h-10 w-10 min-w-10 items-center justify-center rounded-full border border-slate-300 bg-white p-0 text-slate-700 leading-none transition hover:bg-slate-100"
+                              onClick={() => {
+                                setLoginMethod("options");
+                                setOtpRequested(false);
+                                setOtpCode("");
+                              }}
+                              disabled={otpLoading}
+                              aria-label="Cancel OTP sign-in"
+                            >
+                              ✕
+                            </button>
+
+                            <button
+                              type="submit"
+                              className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+                              disabled={otpLoading}
+                            >
+                              {otpLoading ? "Verifying..." : "Verify code"}
+                            </button>
+
+                            <button
+                              type="button"
+                              className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50"
+                              onClick={() => handleEmailOtpRequest(null, true)}
+                              disabled={otpLoading || otpLocked}
+                              title={
+                                otpLocked
+                                  ? "Account locked — unlock with Google"
+                                  : undefined
+                              }
+                            >
+                              {otpLocked ? "Resend (locked)" : "Resend"}
+                            </button>
+                          </div>
+                        </form>
+                      )
                     ) : (
                       <form
                         className="space-y-4"
-                        onSubmit={handleEmailLinkSubmit}
+                        onSubmit={handleEmailOtpRequest}
                       >
                         <label className="block text-sm font-medium text-slate-700">
                           Email
@@ -810,7 +1118,7 @@ function Navbar() {
                             type="button"
                             className="flex h-10 w-10 min-w-10 items-center justify-center rounded-full border border-slate-300 bg-white p-0 text-slate-700 leading-none transition hover:bg-slate-100"
                             onClick={() => setLoginMethod("options")}
-                            disabled={authLoading}
+                            disabled={authLoading || otpLoading}
                             aria-label="Cancel email sign-in"
                           >
                             ✕
@@ -818,30 +1126,49 @@ function Navbar() {
                           <button
                             type="submit"
                             className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
-                            disabled={authLoading}
+                            disabled={authLoading || otpLoading}
                           >
-                            {authLoading
-                              ? pendingEmailLinkUrl
-                                ? "Completing sign-in..."
-                                : "Sending link..."
-                              : pendingEmailLinkUrl
-                                ? "Complete sign-in"
-                                : "Send sign-in link"}
+                            {otpLoading ? "Sending..." : "Send code"}
                           </button>
                         </div>
                       </form>
                     )}
 
-                    {loginError ? (
-                      <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                        {loginError}
+                    <div className="mt-4">
+                      <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={loginForm.remember}
+                          onChange={(event) =>
+                            handleLoginChange("remember", event.target.checked)
+                          }
+                          className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+                        />
+                        Keep me signed in on this device
+                      </label>
+                    </div>
+
+                    {/* Unified notification: red for errors, green for notices */}
+                    {loginError || (otpError && !otpShowGoogleLink) ? (
+                      <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                        {loginError ||
+                          (otpError && !otpShowGoogleLink ? otpError : null)}
+                      </p>
+                    ) : loginNotice || otpNotice ? (
+                      <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                        {loginNotice || otpNotice}
                       </p>
                     ) : null}
-
-                    {loginNotice ? (
-                      <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-                        {loginNotice}
-                      </p>
+                    {otpShowGoogleLink && !otpRequested ? (
+                      <div className="mt-3">
+                        <button
+                          type="button"
+                          className="text-sm font-medium text-sky-600 underline"
+                          onClick={handleGoogleLogin}
+                        >
+                          Sign in with Google
+                        </button>
+                      </div>
                     ) : null}
                   </div>
                 </div>
