@@ -14,6 +14,14 @@ const logging = new Logging({
 const authLog = logging.log("auth_event");
 
 async function writeStructuredAuthLog(payload) {
+  // If LOG_TO_STDOUT=1 is set, emit JSON to stdout so platform logging
+  // agents (Cloud Run, GKE) capture the same structured payload without
+  // requiring a service account with Logging permissions.
+  if (process.env.LOG_TO_STDOUT === '1') {
+    console.log(JSON.stringify(payload));
+    return;
+  }
+
   try {
     const entry = authLog.entry({ resource: { type: "global" } }, payload);
     await authLog.write(entry);
