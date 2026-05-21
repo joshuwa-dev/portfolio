@@ -59,6 +59,7 @@ export async function POST(req) {
       return NextResponse.json({ error: "invalid_request" }, { status: 400 });
     }
     const adminDb = admin.firestore();
+    const codeHash = crypto.createHash("sha256").update(String(code)).digest("hex");
     // Helper: best-effort POST to the canonical auth-logs endpoint.
     async function postAuthLog(req, payload) {
       try {
@@ -221,13 +222,36 @@ export async function POST(req) {
       return await recordFailedAttemptAndRespond("expired");
     }
 
-    const codeHash = crypto
-      .createHash("sha256")
-      .update(String(code))
-      .digest("hex");
-    // Enforce numeric 6-digit codes only
-    if (!/^[0-9]{6}$/.test(String(code))) {
-      return await recordFailedAttemptAndRespond("invalid_format");
+    try {
+      const lockDoc = await lockRef.get();
+      if (lockDoc.exists) {
+        const data = lockDoc.data();
+        if (data && data.locked) {
+          try {
+            await postAuthLog(req, {
+              eventType: "auth.account.locked",
+              userId: String(email).toLowerCase(),
+              email: String(email).toLowerCase(),
+              platform: "web",
+              provider: "email_otp",
+              metadata: { reason: "attempt_verify_on_locked_account" },
+            });
+          } catch (e) {
+            /* non-blocking */
+          }
+
+          return NextResponse.json(
+            {
+              error: "locked",
+              message: "Account locked — unlock only via Google sign-in.",
+              unlockWith: "google",
+            },
+            { status: 423 },
+          );
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to check otp lock:", e?.message || e);
     }
     if (codeHash !== otpDocData.codeHash) {
       return await recordFailedAttemptAndRespond("invalid_code");

@@ -85,6 +85,19 @@ export async function POST(req) {
       if (lockDoc.exists) {
         const data = lockDoc.data();
         if (data && data.locked) {
+          try {
+            await postAuthLog(req, {
+              eventType: "auth.account.locked",
+              userId: emailLower,
+              email: emailLower,
+              platform: "web",
+              provider: "email_otp",
+              metadata: { reason: "attempt_request_on_locked_account" },
+            });
+          } catch (e) {
+            /* non-blocking */
+          }
+
           return NextResponse.json(
             {
               error: "locked",

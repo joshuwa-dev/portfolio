@@ -5,7 +5,6 @@ import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 import {
   GoogleAuthProvider,
-  browserLocalPersistence,
   browserSessionPersistence,
   isSignInWithEmailLink,
   onAuthStateChanged,
@@ -89,7 +88,6 @@ function MoodToneIcon({ tone, className = "h-5 w-5" }) {
 
 function Navbar() {
   const EMAIL_LINK_STORAGE_KEY = "av_email_link_pending_email";
-  const EMAIL_LINK_REMEMBER_KEY = "av_email_link_remember";
 
   const router = useRouter();
   const pathname = usePathname();
@@ -109,7 +107,7 @@ function Navbar() {
   const [userEmail, setUserEmail] = useState("");
   const [loginMethod, setLoginMethod] = useState("options");
   const [authLoading, setAuthLoading] = useState(false);
-  const [loginForm, setLoginForm] = useState({ email: "", remember: false });
+  const [loginForm, setLoginForm] = useState({ email: "" });
   const [loginError, setLoginError] = useState("");
   const [loginNotice, setLoginNotice] = useState("");
   const [otpRequested, setOtpRequested] = useState(false);
@@ -384,16 +382,10 @@ function Navbar() {
       postLoginRequestedRef.current = true;
 
       if (pendingEmailLinkUrl) {
-        await setPersistence(
-          auth,
-          loginForm.remember
-            ? browserLocalPersistence
-            : browserSessionPersistence,
-        );
+        await setPersistence(auth, browserSessionPersistence);
 
         await signInWithEmailLink(auth, email, pendingEmailLinkUrl);
         window.localStorage.removeItem(EMAIL_LINK_STORAGE_KEY);
-        window.localStorage.removeItem(EMAIL_LINK_REMEMBER_KEY);
         setPendingEmailLinkUrl("");
         setLoginNotice("Email link verified. You are signed in.");
         showSignedInConfirmation();
@@ -409,14 +401,10 @@ function Navbar() {
 
       await sendSignInLinkToEmail(auth, email, actionCodeSettings);
       window.localStorage.setItem(EMAIL_LINK_STORAGE_KEY, email);
-      window.localStorage.setItem(
-        EMAIL_LINK_REMEMBER_KEY,
-        loginForm.remember ? "local" : "session",
-      );
-
+      // Always session-only persistence for email links.
       setLoginNotice("Check your email for a secure sign-in link.");
       setLoginError("");
-      setLoginForm({ email, remember: loginForm.remember });
+      setLoginForm({ email });
     } catch (error) {
       postLoginRequestedRef.current = false;
       setLoginError(error?.message || "Unable to send sign-in link right now.");
@@ -567,12 +555,7 @@ function Navbar() {
         return;
       }
 
-      await setPersistence(
-        auth,
-        loginForm.remember
-          ? browserLocalPersistence
-          : browserSessionPersistence,
-      );
+      await setPersistence(auth, browserSessionPersistence);
 
       await signInWithCustomToken(auth, token);
       postLoginRequestedRef.current = true;
@@ -588,10 +571,7 @@ function Navbar() {
     if (!isClient) return;
     if (!isSignInWithEmailLink(auth, window.location.href)) return;
 
-    const storedEmail =
-      window.localStorage.getItem(EMAIL_LINK_STORAGE_KEY) || "";
-    const rememberMode =
-      window.localStorage.getItem(EMAIL_LINK_REMEMBER_KEY) || "session";
+    const storedEmail = window.localStorage.getItem(EMAIL_LINK_STORAGE_KEY) || "";
 
     if (!storedEmail) {
       setPendingEmailLinkUrl(window.location.href);
@@ -607,16 +587,10 @@ function Navbar() {
       try {
         setAuthLoading(true);
         setLoginError("");
-        await setPersistence(
-          auth,
-          rememberMode === "session"
-            ? browserSessionPersistence
-            : browserLocalPersistence,
-        );
+        await setPersistence(auth, browserSessionPersistence);
 
         await signInWithEmailLink(auth, storedEmail, window.location.href);
         window.localStorage.removeItem(EMAIL_LINK_STORAGE_KEY);
-        window.localStorage.removeItem(EMAIL_LINK_REMEMBER_KEY);
         setPendingEmailLinkUrl("");
         setLoginNotice("Email link verified. You are signed in.");
         showSignedInConfirmation();
@@ -633,6 +607,8 @@ function Navbar() {
 
   async function handleGoogleLogin() {
     const provider = new GoogleAuthProvider();
+    // Force account chooser so user explicitly selects which Google account to use
+    provider.setCustomParameters({ prompt: "select_account" });
 
     try {
       setAuthLoading(true);
@@ -644,12 +620,7 @@ function Navbar() {
       // Close the app modal before launching provider auth to avoid dual-layer UX.
       setShowLoginModal(false);
 
-      await setPersistence(
-        auth,
-        loginForm.remember
-          ? browserLocalPersistence
-          : browserSessionPersistence,
-      );
+      await setPersistence(auth, browserSessionPersistence);
 
       const result = await signInWithPopup(auth, provider);
       // After successful Google sign-in clear any server-side OTP lock for this account.
@@ -1158,19 +1129,7 @@ function Navbar() {
                       </form>
                     )}
 
-                    <div className="mt-4">
-                      <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={loginForm.remember}
-                          onChange={(event) =>
-                            handleLoginChange("remember", event.target.checked)
-                          }
-                          className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
-                        />
-                        Keep me signed in on this device
-                      </label>
-                    </div>
+                    {/* Removed 'Keep me signed in' — session-only auth */}
 
                     {/* Unified notification: red for errors, green for notices */}
                     {loginError || (otpError && !otpShowGoogleLink) ? (
